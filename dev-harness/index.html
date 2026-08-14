@@ -2,70 +2,105 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Share Quote — spike harness</title>
+<title>Share Quote — render harness</title>
 <style>
   body { background:#1e1e1e; color:#ddd; font-family:-apple-system,sans-serif; padding:20px; margin:0; }
-  h1 { font-size:15px; font-weight:500; color:#888; margin:0 0 16px; }
-  .grid { display:flex; flex-wrap:wrap; gap:20px; align-items:flex-start; }
+  h1 { font-size:15px; font-weight:500; color:#888; margin:0 0 4px; }
+  h2 { font-size:13px; font-weight:500; color:#6af; margin:22px 0 8px; }
+  .grid { display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start; }
   figure { margin:0; }
-  figcaption { font-size:12px; color:#777; margin-top:6px; }
-  canvas { display:block; box-shadow:0 4px 20px rgba(0,0,0,.5); border-radius:4px; }
-  #status { font-size:13px; color:#6c6; margin-top:14px; }
+  figcaption { font-size:11px; color:#777; margin-top:5px; }
+  canvas { display:block; box-shadow:0 4px 20px rgba(0,0,0,.5); border-radius:3px; }
+  #status { font-size:13px; color:#6c6; margin-top:16px; }
 </style>
 </head>
 <body>
-<h1>Phase 0 spike — canvas renderer, all four ratios</h1>
-<div class="grid" id="grid"></div>
+<h1>Share Quote — renderer output</h1>
+<div id="root"></div>
 <div id="status">rendering…</div>
-<script src="spike.js"></script>
+<script src="harness.js"></script>
 <script>
-  const RATIOS = { "16x9":[1920,1080], "1x1":[1400,1400], "4x5":[1200,1500], "9x16":[1080,1920] };
-  const DISPLAY = 300;
+const { renderCard, palettesFromCover, RATIOS } = ShareQuote;
 
-  // Stand-in cover art so the rotated/bleeding image path is exercised without a real file.
-  function makeCover() {
-    const c = document.createElement('canvas');
-    c.width = 600; c.height = 900;
-    const x = c.getContext('2d');
-    x.fillStyle = '#efe9e0'; x.fillRect(0,0,600,900);
-    const g = x.createLinearGradient(0,0,600,900);
-    g.addColorStop(0,'#c9a888'); g.addColorStop(1,'#8a5f3f');
-    x.fillStyle = g; x.fillRect(40,40,520,600);
-    x.fillStyle = '#2b2b2b';
-    x.font = '600 64px Georgia'; x.fillText('Exercised', 44, 730);
-    x.font = '400 36px Georgia'; x.fillStyle='#666'; x.fillText('Daniel Lieberman', 44, 790);
-    const img = new Image(); img.src = c.toDataURL();
-    return img;
+const SOURCE = {
+  quote: "Eucatastrophe, in Tolkien’s words, is “the good catastrophe, the sudden joyous ‘turn.’ ” In mine, it’s the moment in a story where, when it seems like all is lost, that things are going to be awful forever, that the only possible endings are full of misery and despair, something good happens.",
+  title: "An Academic Affair",
+  author: "Jodi McAlister",
+};
+
+const SHORT = {
+  quote: "All is lost, and then something good happens.",
+  title: "An Academic Affair",
+  author: "Jodi McAlister",
+};
+
+const root = document.getElementById('root');
+const saved = [];
+
+function section(title) {
+  const h = document.createElement('h2'); h.textContent = title; root.appendChild(h);
+  const g = document.createElement('div'); g.className = 'grid'; root.appendChild(g);
+  return g;
+}
+
+async function card(grid, name, spec, displayLong) {
+  const cv = document.createElement('canvas');
+  renderCard(cv, spec);
+  const scale = (displayLong || 260) / Math.max(cv.width, cv.height);
+  cv.style.width = (cv.width*scale)+'px'; cv.style.height = (cv.height*scale)+'px';
+  const fig = document.createElement('figure');
+  fig.appendChild(cv);
+  const cap = document.createElement('figcaption'); cap.textContent = name;
+  fig.appendChild(cap);
+  grid.appendChild(fig);
+
+  const s = 900/Math.max(cv.width, cv.height);
+  const d = document.createElement('canvas');
+  d.width = Math.round(cv.width*s); d.height = Math.round(cv.height*s);
+  const dx = d.getContext('2d'); dx.imageSmoothingQuality='high';
+  dx.drawImage(cv, 0, 0, d.width, d.height);
+  await fetch('/save/'+name, { method:'POST', body: d.toDataURL('image/png') });
+  saved.push(name);
+}
+
+const cover = new Image();
+cover.src = 'fixtures/cover.png';
+cover.onload = async () => {
+  await document.fonts.ready;
+  const palettes = palettesFromCover(cover);
+  console.log('palettes', palettes.map(p => p.id + ':' + p.from));
+
+  let g = section('Pretty — all ratios, first cover-derived palette');
+  for (const ratio of Object.keys(RATIOS)) {
+    await card(g, 'pretty-'+ratio.replace(':','x'),
+      { source: SOURCE, ratio, style:'pretty', palette: palettes[0], cover, scale: 1 }, 300);
   }
 
-  const cover = makeCover();
-  cover.onload = async () => {
-    await document.fonts.ready;
-    const saved = [];
-    for (const [label,[w,h]] of Object.entries(RATIOS)) {
-      const fig = document.createElement('figure');
-      const cv = document.createElement('canvas');
-      SpikeRender.renderSpikeCard(cv, { width:w, height:h, cover });
-      const scale = DISPLAY / Math.max(w,h);
-      cv.style.width = (w*scale)+'px'; cv.style.height = (h*scale)+'px';
-      fig.appendChild(cv);
-      const cap = document.createElement('figcaption');
-      cap.textContent = label + '  ' + w + '×' + h;
-      fig.appendChild(cap);
-      document.getElementById('grid').appendChild(fig);
+  g = section('Pretty 4:5 — every palette in the swatch row');
+  for (const p of palettes) {
+    await card(g, 'palette-'+p.id,
+      { source: SOURCE, ratio:'4:5', style:'pretty', palette: p, cover, scale: 1 }, 220);
+  }
 
-      // Downscale to a reviewable size and push to disk via the harness server.
-      const long = Math.max(w,h), s = 900/long;
-      const d = document.createElement('canvas');
-      d.width = Math.round(w*s); d.height = Math.round(h*s);
-      const dx = d.getContext('2d');
-      dx.imageSmoothingQuality = 'high';
-      dx.drawImage(cv, 0, 0, d.width, d.height);
-      await fetch('/save/'+label, { method:'POST', body: d.toDataURL('image/png') });
-      saved.push(label);
-    }
-    document.getElementById('status').textContent = 'saved: ' + saved.join(', ');
-  };
+  g = section('Short quote — vertical centering');
+  for (const ratio of ['16:9','4:5']) {
+    await card(g, 'short-'+ratio.replace(':','x'),
+      { source: SHORT, ratio, style:'pretty', palette: palettes[0], cover, scale: 1 }, 300);
+  }
+
+  g = section('Clean and Classic styles (no cover)');
+  for (const style of ['clean','classic']) {
+    await card(g, style+'-4x5',
+      { source: SOURCE, ratio:'4:5', style, palette: style==='clean'?palettes[0]:palettes[palettes.length-2], cover, scale: 1 }, 260);
+  }
+
+  g = section('No cover art available');
+  await card(g, 'nocover-4x5',
+    { source: SOURCE, ratio:'4:5', style:'pretty', palette: palettes[palettes.length-1], cover: null, scale: 1 }, 260);
+
+  document.getElementById('status').textContent = 'saved '+saved.length+' renders';
+};
+cover.onerror = () => { document.getElementById('status').textContent = 'cover failed to load'; };
 </script>
 </body>
 </html>

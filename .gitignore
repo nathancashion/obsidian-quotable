@@ -3,6 +3,9 @@ main.js
 *.js.map
 .DS_Store
 .env
-# dev-harness/index.html is tracked; its build output and renders are not.
+# dev-harness/index.html is tracked; everything it generates is not.
 dev-harness/out/
-dev-harness/spike.js
+dev-harness/*.js
+dev-harness/*.mjs
+# Local test assets — real book covers, not ours to redistribute.
+dev-harness/fixtures/
