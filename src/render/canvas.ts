@@ -18,8 +18,29 @@ import {
 /** Longest a title may run before it is shrunk and then truncated. */
 const TITLE_MAX_LINES = 2;
 
-const clamp = (value: number, min: number, max: number) =>
-	Math.min(max, Math.max(min, value));
+/**
+ * Attribution font size, given the size the quote fitted to.
+ *
+ * Three rules, in strict priority order:
+ *
+ *  1. It must always read as smaller than the quote. The attribution is secondary
+ *     information, and a byline that rivals the quote inverts the hierarchy of the
+ *     card. This is a hard ceiling — nothing below may override it.
+ *  2. Subject to that, it should be as legible as possible. A card viewed
+ *     full-width on a phone displays at roughly a third of its pixel size, so the
+ *     floor aims to land the title near 16pt as seen.
+ *  3. Otherwise it tracks the quote proportionally.
+ *
+ * Rule 1 has to dominate because the floor and the proportion disagree whenever a
+ * quote is long enough to fit at a small size: the floor would then push the
+ * attribution past the quote, which is exactly the inversion rule 1 forbids.
+ */
+export function attributionSize(quoteSize: number, unit: number): number {
+	const subordinate = quoteSize * 0.8;
+	const legible = 4.2 * unit;
+	const proportional = quoteSize * 0.75;
+	return Math.min(Math.max(proportional, legible), subordinate, 5.6 * unit);
+}
 
 /** Anything drawable by ctx.drawImage that also reports intrinsic size. */
 export type CoverImage = CanvasImageSource & { width: number; height: number };
@@ -156,15 +177,9 @@ function drawTextBlock(
 	// afterthought. That is circular (the quote fit depends on the space the
 	// attribution reserves), so it is resolved in two passes: fit once against a
 	// nominal reservation to learn the quote size, then re-fit against the real one.
-	//
-	// The floor is set by legibility on a phone rather than by proportion. A card
-	// viewed full-width on a handset is displayed at roughly a third of its pixel
-	// size, so 4.2 units lands the title near 16pt as seen — readable without
-	// competing with the quote, which is what the ratio alone would drift below on
-	// long quotes.
 	let meta = measureMeta(3.2 * unit);
 	let fitted = fitQuote(meta.height);
-	meta = measureMeta(clamp(fitted.size * 0.75, 4.2 * unit, 5.6 * unit));
+	meta = measureMeta(attributionSize(fitted.size, unit));
 	fitted = fitQuote(meta.height);
 
 	const { metaSize, lineHeight: metaLineHeight, title, gap: metaGap, height: metaHeight } = meta;

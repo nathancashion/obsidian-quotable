@@ -8,6 +8,7 @@
 import { captureFromEditor } from "../src/capture/selection";
 import { parseCite } from "../src/capture/metadata";
 import { parseEmphasis } from "../src/render/text";
+import { attributionSize } from "../src/render/canvas";
 
 /** Minimal stand-in for Obsidian's Editor covering only what capture uses. */
 function fakeEditor(content: string, cursorLine = 0, selection = "") {
@@ -198,6 +199,35 @@ check(
 	)?.cite,
 	"Someone, A Book"
 );
+
+// --- attribution sizing ---
+// The hierarchy rule is the one that matters: however legible we would like the
+// attribution to be, it must never rival the quote. A regression here inverts the
+// visual hierarchy of every card, so it is asserted across the whole plausible
+// range of fitted quote sizes rather than at a couple of sample points.
+{
+	const unit = 12; // 4:5 at 1200x1500
+	let violations = 0;
+	let smallest = Infinity;
+	for (let quote = 1.8 * unit; quote <= 6 * unit; quote += 0.1) {
+		const meta = attributionSize(quote, unit);
+		if (meta >= quote) violations++;
+		smallest = Math.min(smallest, meta / quote);
+	}
+	check("attribution never reaches the quote size, at any fit", violations, 0);
+	check("attribution stays meaningfully smaller than the quote", smallest <= 0.8, true);
+}
+
+// The case that regressed: a mid-sized quote where the legibility floor alone
+// would have pushed the attribution above the quote.
+check(
+	"legibility floor cannot override the hierarchy rule",
+	attributionSize(38, 12) < 38,
+	true
+);
+
+// A large quote should let the attribution grow proportionally, not sit at the floor.
+check("large quote scales the attribution up", attributionSize(72, 12) > 4.2 * 12, true);
 
 // --- report ---
 if (failures.length) {
