@@ -1,0 +1,23 @@
+.share-quote-modal .share-quote-preview {
+	display: block;
+	width: 100%;
+	height: auto;
+	max-height: 46vh;
+	object-fit: contain;
+	border-radius: 8px;
+	background: var(--background-secondary);
+	margin-bottom: var(--size-4-3);
+}
+
+.share-quote-modal .share-quote-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-2);
+	justify-content: center;
+	margin-bottom: var(--size-4-3);
+}
+
+.share-quote-modal .share-quote-row button.is-active {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}

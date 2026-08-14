@@ -1,0 +1,31 @@
+{
+	"name": "obsidian-share-quote",
+	"version": "0.1.0",
+	"description": "Turn selected text into a shareable image.",
+	"main": "main.js",
+	"private": true,
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"typecheck": "tsc -noEmit -skipLibCheck"
+	},
+	"keywords": [
+		"obsidian",
+		"obsidian-plugin",
+		"quote",
+		"share",
+		"image"
+	],
+	"license": "MIT",
+	"devDependencies": {
+		"@types/node": "^20.11.0",
+		"builtin-modules": "^3.3.0",
+		"esbuild": "^0.20.0",
+		"obsidian": "latest",
+		"tslib": "^2.6.2",
+		"typescript": "^5.3.3"
+	},
+	"allowScripts": {
+		"esbuild@0.20.2": true
+	}
+}

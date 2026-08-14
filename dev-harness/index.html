@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Share Quote — spike harness</title>
+<style>
+  body { background:#1e1e1e; color:#ddd; font-family:-apple-system,sans-serif; padding:20px; margin:0; }
+  h1 { font-size:15px; font-weight:500; color:#888; margin:0 0 16px; }
+  .grid { display:flex; flex-wrap:wrap; gap:20px; align-items:flex-start; }
+  figure { margin:0; }
+  figcaption { font-size:12px; color:#777; margin-top:6px; }
+  canvas { display:block; box-shadow:0 4px 20px rgba(0,0,0,.5); border-radius:4px; }
+  #status { font-size:13px; color:#6c6; margin-top:14px; }
+</style>
+</head>
+<body>
+<h1>Phase 0 spike — canvas renderer, all four ratios</h1>
+<div class="grid" id="grid"></div>
+<div id="status">rendering…</div>
+<script src="spike.js"></script>
+<script>
+  const RATIOS = { "16x9":[1920,1080], "1x1":[1400,1400], "4x5":[1200,1500], "9x16":[1080,1920] };
+  const DISPLAY = 300;
+
+  // Stand-in cover art so the rotated/bleeding image path is exercised without a real file.
+  function makeCover() {
+    const c = document.createElement('canvas');
+    c.width = 600; c.height = 900;
+    const x = c.getContext('2d');
+    x.fillStyle = '#efe9e0'; x.fillRect(0,0,600,900);
+    const g = x.createLinearGradient(0,0,600,900);
+    g.addColorStop(0,'#c9a888'); g.addColorStop(1,'#8a5f3f');
+    x.fillStyle = g; x.fillRect(40,40,520,600);
+    x.fillStyle = '#2b2b2b';
+    x.font = '600 64px Georgia'; x.fillText('Exercised', 44, 730);
+    x.font = '400 36px Georgia'; x.fillStyle='#666'; x.fillText('Daniel Lieberman', 44, 790);
+    const img = new Image(); img.src = c.toDataURL();
+    return img;
+  }
+
+  const cover = makeCover();
+  cover.onload = async () => {
+    await document.fonts.ready;
+    const saved = [];
+    for (const [label,[w,h]] of Object.entries(RATIOS)) {
+      const fig = document.createElement('figure');
+      const cv = document.createElement('canvas');
+      SpikeRender.renderSpikeCard(cv, { width:w, height:h, cover });
+      const scale = DISPLAY / Math.max(w,h);
+      cv.style.width = (w*scale)+'px'; cv.style.height = (h*scale)+'px';
+      fig.appendChild(cv);
+      const cap = document.createElement('figcaption');
+      cap.textContent = label + '  ' + w + '×' + h;
+      fig.appendChild(cap);
+      document.getElementById('grid').appendChild(fig);
+
+      // Downscale to a reviewable size and push to disk via the harness server.
+      const long = Math.max(w,h), s = 900/long;
+      const d = document.createElement('canvas');
+      d.width = Math.round(w*s); d.height = Math.round(h*s);
+      const dx = d.getContext('2d');
+      dx.imageSmoothingQuality = 'high';
+      dx.drawImage(cv, 0, 0, d.width, d.height);
+      await fetch('/save/'+label, { method:'POST', body: d.toDataURL('image/png') });
+      saved.push(label);
+    }
+    document.getElementById('status').textContent = 'saved: ' + saved.join(', ');
+  };
+</script>
+</body>
+</html>
