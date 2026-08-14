@@ -151,6 +151,12 @@ makes the diagonal seam and per-ratio type fitting simpler than their CSS equiva
 
 There are no runtime dependencies.
 
+The mobile half of that reasoning has been confirmed on a device: rendering and every
+export path, including the native share sheet, work in Obsidian on iOS. Treat this as
+settled rather than as an open question — if you are considering swapping the renderer
+for a DOM-rasterisation library, the failure mode it was chosen to avoid is real and
+would need re-testing on iOS, not just on desktop.
+
 ## Licence
 
 MIT
