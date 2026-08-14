@@ -1,7 +1,7 @@
 import { RATIOS, type QuoteSource, type RatioKey } from "../types";
 import { computeLayout, coverScale, type Layout } from "./layouts";
 import { STYLES, type Palette, type StyleKey, type StyleTraits } from "./styles";
-import { drawLines, fitTextToBox } from "./text";
+import { drawLines, fitSingleLine, fitTextToBox, type FontSpec } from "./text";
 
 /**
  * The single renderer. Both the live preview and the exported PNG call this, so
@@ -38,6 +38,11 @@ function drawCover(
 	const cy = region.y + region.h / 2;
 
 	ctx.save();
+	// Cover URLs often point at thumbnails (Amazon's `_SY160`, for one), so the
+	// image is frequently upscaled several times over. Smoothing is the difference
+	// between a soft background and a visibly blocky one.
+	ctx.imageSmoothingEnabled = true;
+	ctx.imageSmoothingQuality = "high";
 
 	if (rotation) {
 		ctx.translate(cx, cy);
@@ -135,15 +140,25 @@ function drawTextBlock(
 
 	let y = quoteEnd - fitted.lineHeight * (traits.lineHeightRatio - 1) + metaGap + extraGap;
 	if (hasTitle) {
-		ctx.font = `600 ${metaSize}px ${traits.metaFamily}`;
+		const titleFont: FontSpec = (s) => `600 ${s}px ${traits.metaFamily}`;
+		const title = fitSingleLine(ctx, source.title!.trim(), textW, titleFont, metaSize);
+		ctx.font = titleFont(title.size);
 		ctx.fillStyle = palette.text;
-		ctx.fillText(source.title!.trim(), textX, y);
+		ctx.fillText(title.text, textX, y);
 		y += metaSize * 1.32;
 	}
 	if (hasAuthor) {
-		ctx.font = `400 ${metaSize * 0.92}px ${traits.metaFamily}`;
+		const authorFont: FontSpec = (s) => `400 ${s}px ${traits.metaFamily}`;
+		const author = fitSingleLine(
+			ctx,
+			source.author!.trim(),
+			textW,
+			authorFont,
+			metaSize * 0.92
+		);
+		ctx.font = authorFont(author.size);
 		ctx.fillStyle = palette.muted;
-		ctx.fillText(source.author!.trim(), textX, y);
+		ctx.fillText(author.text, textX, y);
 	}
 }
 

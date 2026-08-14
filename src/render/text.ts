@@ -105,6 +105,51 @@ export function fitTextToBox(
 	return best;
 }
 
+/**
+ * Fit a single unwrapped line (a title or byline) into `maxWidth`.
+ *
+ * Shrinks toward `minScale` first, since a slightly smaller title reads better than
+ * a truncated one, and only ellipsizes when even the smallest size overflows.
+ * Callers reserve space at the nominal size, so the result never grows.
+ */
+export function fitSingleLine(
+	ctx: CanvasRenderingContext2D,
+	text: string,
+	maxWidth: number,
+	font: FontSpec,
+	size: number,
+	minScale = 0.72
+): { text: string; size: number } {
+	const fits = (candidate: string, at: number) => {
+		ctx.font = font(at);
+		return ctx.measureText(candidate).width <= maxWidth;
+	};
+
+	if (fits(text, size)) return { text, size };
+
+	const floor = size * minScale;
+	let lo = floor;
+	let hi = size;
+	let best = floor;
+	for (let i = 0; i < 12 && hi - lo > 0.25; i++) {
+		const mid = (lo + hi) / 2;
+		if (fits(text, mid)) {
+			best = mid;
+			lo = mid;
+		} else {
+			hi = mid;
+		}
+	}
+	if (fits(text, best)) return { text, size: best };
+
+	// Still too wide at the smallest size: trim characters until the ellipsis fits.
+	let trimmed = text;
+	while (trimmed.length > 1 && !fits(`${trimmed.trimEnd()}…`, floor)) {
+		trimmed = trimmed.slice(0, -1);
+	}
+	return { text: `${trimmed.trimEnd()}…`, size: floor };
+}
+
 /** Draw pre-fitted lines from a top-left origin. Returns the y after the last line. */
 export function drawLines(
 	ctx: CanvasRenderingContext2D,

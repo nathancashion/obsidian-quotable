@@ -80,6 +80,36 @@ check(
 	"Daniel Lieberman, Exercised"
 );
 
+// Plain blockquote whose only attribution is a <cite> on its own line, with a
+// comma inside the title as well as between author and title.
+const citedQuote = [
+	"---",
+	"cover_image: https://example.com/cover.jpg",
+	"---",
+	"",
+	"",
+	"> Other jobs might make demands on your skills, but if you are deficient you",
+	"> can do something about it.",
+	"> <cite>Richard Dawkins, Books do Furnish a Life: An electrifying celebration of science writing</cite>",
+].join("\n");
+
+check(
+	"cite on its own line leaves no trailing artefacts in the quote",
+	captureFromEditor(fakeEditor(citedQuote, 6))?.text,
+	"Other jobs might make demands on your skills, but if you are deficient you can do something about it."
+);
+
+check(
+	"only the first comma splits author from title",
+	parseCite(
+		"Richard Dawkins, Books do Furnish a Life: An electrifying celebration of science writing"
+	),
+	{
+		author: "Richard Dawkins",
+		title: "Books do Furnish a Life: An electrifying celebration of science writing",
+	}
+);
+
 check(
 	"plain blockquote at cursor",
 	captureFromEditor(fakeEditor("> A quoted line.\n> Continued here.", 1))?.text,

@@ -94,6 +94,22 @@ cover.onload = async () => {
       { source: SOURCE, ratio:'4:5', style, palette: style==='clean'?palettes[0]:palettes[palettes.length-2], cover, scale: 1 }, 260);
   }
 
+  // Real-world case from "Another Quote.md": long title from <cite>, tiny remote cover.
+  const dawkins = new Image();
+  dawkins.src = 'fixtures/dawkins.jpg';
+  await new Promise(r => { dawkins.onload = r; dawkins.onerror = r; });
+  const DAWKINS = {
+    quote: "Other jobs might make demands on your skills, but if you are deficient you can do something about it. A lumberjack or a musician can improve with practice: try harder. But lumberjacks and musicians are not required to believe.",
+    title: "Books do Furnish a Life: An electrifying celebration of science writing",
+    author: "Richard Dawkins",
+  };
+  const dpal = palettesFromCover(dawkins);
+  g = section('Another Quote.md — long cite title + 104x160 remote cover');
+  for (const ratio of Object.keys(RATIOS)) {
+    await card(g, 'dawkins-'+ratio.replace(':','x'),
+      { source: DAWKINS, ratio, style:'pretty', palette: dpal[0], cover: dawkins, scale: 1 }, 300);
+  }
+
   g = section('No cover art available');
   await card(g, 'nocover-4x5',
     { source: SOURCE, ratio:'4:5', style:'pretty', palette: palettes[palettes.length-1], cover: null, scale: 1 }, 260);
