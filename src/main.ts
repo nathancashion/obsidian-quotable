@@ -2,8 +2,9 @@ import { MarkdownView, Plugin, type Editor, type TFile } from "obsidian";
 import { resolveMetadata } from "./capture/metadata";
 import { captureFromEditor } from "./capture/selection";
 import { notify, probeCapabilities, type ExportCapabilities } from "./export/output";
-import { DEFAULT_SETTINGS, type ShareQuoteSettings } from "./settings";
+import { DEFAULT_SETTINGS, resolveThemeFonts, type ShareQuoteSettings } from "./settings";
 import { ShareModal } from "./ui/ShareModal";
+import { ShareQuoteSettingTab } from "./ui/SettingsTab";
 
 export default class ShareQuotePlugin extends Plugin {
 	settings: ShareQuoteSettings = DEFAULT_SETTINGS;
@@ -12,6 +13,7 @@ export default class ShareQuotePlugin extends Plugin {
 	async onload() {
 		this.capabilities = probeCapabilities();
 		await this.loadSettings();
+		this.addSettingTab(new ShareQuoteSettingTab(this));
 
 		this.addCommand({
 			id: "share-quote",
@@ -77,6 +79,9 @@ export default class ShareQuotePlugin extends Plugin {
 				app: this.app,
 				settings: this.settings,
 				capabilities: this.capabilities,
+				// Resolved per invocation rather than cached: the user can change theme
+				// without reloading the plugin.
+				fonts: this.settings.useThemeFonts ? resolveThemeFonts() : undefined,
 				insertEmbed: (path) => editor.replaceSelection(`![[${path}]]\n`),
 			},
 			source

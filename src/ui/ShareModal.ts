@@ -27,6 +27,8 @@ export interface ShareModalDeps {
 	app: App;
 	settings: ShareQuoteSettings;
 	capabilities: ExportCapabilities;
+	/** Font stacks overriding the style's own, when theme fonts are enabled. */
+	fonts?: { quote?: string; meta?: string };
 	/** Insert an embed for a saved image at the cursor, if an editor is available. */
 	insertEmbed?: (linkText: string) => void;
 }
@@ -34,7 +36,7 @@ export interface ShareModalDeps {
 export class ShareModal extends Modal {
 	private source: QuoteSource;
 	private ratio: RatioKey;
-	private style: StyleKey = "pretty";
+	private style: StyleKey;
 	private palettes: Palette[] = [LIGHT_PALETTE, DARK_PALETTE];
 	private paletteIndex = 0;
 	private cover: LoadedCover | null = null;
@@ -49,6 +51,7 @@ export class ShareModal extends Modal {
 		super(deps.app);
 		this.source = { ...source };
 		this.ratio = deps.settings.defaultRatio;
+		this.style = deps.settings.defaultStyle;
 	}
 
 	async onOpen() {
@@ -215,6 +218,7 @@ export class ShareModal extends Modal {
 				palette: this.palettes[this.paletteIndex],
 				cover: this.cover?.image as CoverImage | undefined,
 				scale: this.deps.settings.exportScale,
+				fonts: this.deps.fonts,
 			});
 			await run(await canvasToBlob(offscreen));
 		} catch (err) {
@@ -243,6 +247,7 @@ export class ShareModal extends Modal {
 			palette: this.palettes[this.paletteIndex],
 			cover: this.cover?.image as CoverImage | undefined,
 			scale: PREVIEW_SCALE,
+			fonts: this.deps.fonts,
 		});
 	}
 

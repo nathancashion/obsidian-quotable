@@ -130,6 +130,13 @@ cover.onload = async () => {
   await card(g, 'emphasis-classic',
     { source: EMPH, ratio:'4:5', style:'classic', palette: dpal[dpal.length-2], cover: null, scale: 1 }, 260);
 
+  g = section('Font override (simulates the theme-fonts setting)');
+  await card(g, 'fonts-override',
+    { source: DAWKINS, ratio:'4:5', style:'pretty', palette: dpal[0], cover: dawkins, scale: 1,
+      fonts: { quote: 'Georgia, serif', meta: 'Verdana, sans-serif' } }, 260);
+  await card(g, 'fonts-default',
+    { source: DAWKINS, ratio:'4:5', style:'pretty', palette: dpal[0], cover: dawkins, scale: 1 }, 260);
+
   g = section('No cover art available');
   await card(g, 'nocover-4x5',
     { source: SOURCE, ratio:'4:5', style:'pretty', palette: palettes[palettes.length-1], cover: null, scale: 1 }, 260);

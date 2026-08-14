@@ -53,6 +53,8 @@ export interface CardSpec {
 	cover?: CoverImage | null;
 	/** Multiplier on the base ratio dimensions. 1 for preview, 2–3 for export. */
 	scale: number;
+	/** Font stacks overriding the style's own, e.g. the current theme's fonts. */
+	fonts?: { quote?: string; meta?: string };
 }
 
 function tracePath(ctx: CanvasRenderingContext2D, points: Array<[number, number]>): void {
@@ -121,13 +123,16 @@ function drawTextBlock(
 	const textX = content.x + barGutter;
 	const textW = content.w - barGutter;
 
-	const titleFont: FontSpec = (s) => `600 ${s}px ${traits.metaFamily}`;
-	const authorFont: FontSpec = (s) => `400 ${s}px ${traits.metaFamily}`;
+	const quoteFamily = spec.fonts?.quote ?? traits.quoteFamily;
+	const metaFamily = spec.fonts?.meta ?? traits.metaFamily;
+
+	const titleFont: FontSpec = (s) => `600 ${s}px ${metaFamily}`;
+	const authorFont: FontSpec = (s) => `400 ${s}px ${metaFamily}`;
 
 	// Bold maps to 700 regardless of the style's base weight; italic relies on the
 	// family having a real italic, which every serif and sans in our stacks does.
 	const quoteFont: StyledFontSpec = (size, bold, italic) =>
-		`${italic ? "italic " : ""}${bold ? 700 : traits.quoteWeight} ${size}px ${traits.quoteFamily}`;
+		`${italic ? "italic " : ""}${bold ? 700 : traits.quoteWeight} ${size}px ${quoteFamily}`;
 
 	/** Everything about the attribution block that follows from its font size. */
 	const measureMeta = (metaSize: number) => {
