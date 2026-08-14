@@ -7,6 +7,7 @@
  */
 import { captureFromEditor } from "../src/capture/selection";
 import { parseCite } from "../src/capture/metadata";
+import { parseEmphasis } from "../src/render/text";
 
 /** Minimal stand-in for Obsidian's Editor covering only what capture uses. */
 function fakeEditor(content: string, cursorLine = 0, selection = "") {
@@ -29,11 +30,17 @@ function check(name: string, actual: unknown, expected: unknown) {
 	else failures.push(`${name}\n    expected: ${e}\n    actual:   ${a}`);
 }
 
-// --- selection takes priority, markdown is stripped ---
+// --- selection takes priority; emphasis is preserved for the renderer ---
 check(
-	"selection with highlight + bold markers",
+	"highlight markers are stripped, emphasis markers survive for styling",
 	captureFromEditor(fakeEditor("body", 0, "The ==quick== and **brave** fox."))?.text,
-	"The quick and brave fox."
+	"The quick and **brave** fox."
+);
+
+check(
+	"code and strikethrough markers are stripped",
+	captureFromEditor(fakeEditor("x", 0, "Use `npm run dev`, not ~~yarn~~."))?.text,
+	"Use npm run dev, not yarn."
 );
 
 check(
@@ -162,6 +169,35 @@ check("cite: leading dash stripped", parseCite("— Someone, A Book"), {
 	author: "Someone",
 	title: "A Book",
 });
+
+// --- inline emphasis parsing ---
+const runs = (text: string) =>
+	parseEmphasis(text).map((r) => [r.text, r.bold ? "b" : "", r.italic ? "i" : ""].join(""));
+
+check("plain text is one run", runs("hello there"), ["hello there"]);
+check("bold span", runs("a **bold** c"), ["a ", "boldb", " c"]);
+check("italic span", runs("a *soft* c"), ["a ", "softi", " c"]);
+check("bold and italic together", runs("***both***"), ["bothbi"]);
+// Spaces stay inside the surrounding bold runs, which is what keeps word spacing
+// correct when each run is painted separately.
+check("bold containing italic", runs("**very *very* bold**"), [
+	"very b",
+	"verybi",
+	" boldb",
+]);
+
+// The flanking rule is what stops stray asterisks from italicising the rest of a
+// quote; without it "2 * 3 * 4" would open emphasis at the first asterisk.
+check("lone asterisks in prose stay literal", runs("2 * 3 * 4"), ["2 * 3 * 4"]);
+check("unmatched trailing asterisk is literal", runs("star* "), ["star* "]);
+
+check(
+	"emphasis is stripped from a cite, not kept",
+	captureFromEditor(
+		fakeEditor("> quote\n> <cite>**Someone**, *A Book*</cite>", 0)
+	)?.cite,
+	"Someone, A Book"
+);
 
 // --- report ---
 if (failures.length) {

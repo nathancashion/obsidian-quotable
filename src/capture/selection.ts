@@ -30,10 +30,21 @@ function stripBlockquote(lines: string[]): string[] {
 
 /**
  * Remove markdown that shouldn't appear as literal characters in a rendered image.
- * v1 renders plain text, so emphasis markers are dropped rather than styled.
+ *
+ * Emphasis markers are kept by default: the renderer parses them into styled runs,
+ * so the quote must reach it as markdown. They are stripped only where the target
+ * is drawn in a single fixed style, i.e. the attribution lines.
  */
-function stripInlineMarkdown(text: string): string {
-	return (
+function stripInlineMarkdown(text: string, stripEmphasis = false): string {
+	const withoutEmphasis = (value: string) =>
+		value
+			.replace(/\*\*\*([^*]+)\*\*\*/g, "$1")
+			.replace(/\*\*([^*]+)\*\*/g, "$1")
+			// Bold is already gone, so any remaining `*` pair is emphasis.
+			// Deliberately no lookbehind here: iOS Safari lacked support before 16.4.
+			.replace(/\*([^*]+)\*/g, "$1");
+
+	const result = (
 		text
 			// Wikilinks and embeds: keep the display text.
 			.replace(/!?\[\[([^\]|]+)\|([^\]]+)\]\]/g, "$2")
@@ -42,18 +53,15 @@ function stripInlineMarkdown(text: string): string {
 			.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
 			// Footnote references.
 			.replace(/\[\^[^\]]+\]/g, "")
-			// Highlights, bold, italic, strikethrough, inline code.
+			// Highlight, strikethrough and code markers carry no styling in the card.
 			.replace(/==([^=]+)==/g, "$1")
-			.replace(/\*\*\*([^*]+)\*\*\*/g, "$1")
-			.replace(/\*\*([^*]+)\*\*/g, "$1")
-			// Bold is already gone, so any remaining `*` pair is emphasis.
-			// Deliberately no lookbehind here: iOS Safari lacked support before 16.4.
-			.replace(/\*([^*]+)\*/g, "$1")
 			.replace(/~~([^~]+)~~/g, "$1")
 			.replace(/`([^`]+)`/g, "$1")
 			// Obsidian block references at end of line.
 			.replace(/\s*\^[a-zA-Z0-9-]+\s*$/g, "")
 	);
+
+	return stripEmphasis ? withoutEmphasis(result) : result;
 }
 
 /** Normalize a captured block into a clean quote string plus any callout title. */
@@ -103,7 +111,9 @@ function extractCite(raw: string): { body: string; cite?: string } {
 	const match = CITE_RE.exec(raw);
 	if (!match) return { body: raw };
 
-	const cite = stripInlineMarkdown(match[1]).trim();
+	// The attribution is drawn in one fixed style, so emphasis markers there would
+	// only show up as literal asterisks.
+	const cite = stripInlineMarkdown(match[1], true).trim();
 	// Remove the cite element and any leading dash/em-dash that introduced it.
 	const body = raw.replace(CITE_RE, "").replace(/\s*[-–—]+\s*$/gm, "");
 	return { body, cite };

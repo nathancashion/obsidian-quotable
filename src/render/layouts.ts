@@ -33,13 +33,20 @@ export interface Layout {
 	gradient: { x0: number; y0: number; x1: number; y1: number };
 }
 
-/** Per-ratio tuning: where the seam sits, and how much room the text gets. */
-const TUNING: Record<RatioKey, { split: number; pad: number }> = {
+/**
+ * Per-ratio tuning: where the seam sits, and how much room the text gets.
+ *
+ * Padding is split by axis because the two do different work. `padX` sets the text
+ * inset from the edge and wants to stay visually constant across ratios; `padY` is
+ * headroom, and the wide ratios need proportionally more of it — at 16:9 the unit
+ * is derived from the short edge, so a uniform pad leaves the text crowding the top.
+ */
+const TUNING: Record<RatioKey, { split: number; padX: number; padY: number }> = {
 	// `split` is the seam position along the divided axis, as a fraction.
-	"16:9": { split: 0.63, pad: 7 },
-	"1:1": { split: 0.68, pad: 7 },
-	"4:5": { split: 0.46, pad: 7 },
-	"9:16": { split: 0.42, pad: 7 },
+	"16:9": { split: 0.63, padX: 7, padY: 11 },
+	"1:1": { split: 0.68, padX: 7, padY: 8 },
+	"4:5": { split: 0.46, padX: 7, padY: 7 },
+	"9:16": { split: 0.42, padX: 7, padY: 7 },
 };
 
 export function computeLayout(
@@ -52,8 +59,9 @@ export function computeLayout(
 ): Layout {
 	const unit = Math.min(W, H) / 100;
 	const stacked = isStacked(ratio);
-	const { split, pad: padUnits } = TUNING[ratio];
-	const pad = padUnits * unit;
+	const { split, padX: padXUnits, padY: padYUnits } = TUNING[ratio];
+	const padX = padXUnits * unit;
+	const padY = padYUnits * unit;
 	const skew = style.seamSkew;
 
 	// With no cover there is nothing to divide, so the panel is the whole card and
@@ -70,7 +78,7 @@ export function computeLayout(
 				[W, H],
 				[0, H],
 			],
-			content: { x: pad, y: pad, w: W - pad * 2, h: H - pad * 2 },
+			content: { x: padX, y: padY, w: W - padX * 2, h: H - padY * 2 },
 			coverRegion: { x: 0, y: 0, w: 0, h: 0 },
 			coverRotation: 0,
 			gradient: { x0: 0, y0: 0, x1: W * 0.6, y1: H },
@@ -93,10 +101,10 @@ export function computeLayout(
 				[0, H],
 			],
 			content: {
-				x: pad,
-				y: seamLeft + pad,
-				w: W - pad * 2,
-				h: H - seamLeft - pad * 2,
+				x: padX,
+				y: seamLeft + padY,
+				w: W - padX * 2,
+				h: H - seamLeft - padY * 2,
 			},
 			// Extend past the seam so no backdrop shows through the diagonal.
 			coverRegion: { x: 0, y: 0, w: W, h: seamLeft + unit },
@@ -120,11 +128,11 @@ export function computeLayout(
 			[0, H],
 		],
 		content: {
-			x: pad,
-			y: pad,
+			x: padX,
+			y: padY,
 			// Keep clear of the leaning seam by measuring to its narrowest point.
-			w: Math.min(seamTop, seamBottom) - pad * 2,
-			h: H - pad * 2,
+			w: Math.min(seamTop, seamBottom) - padX * 2,
+			h: H - padY * 2,
 		},
 		coverRegion: {
 			x: Math.min(seamTop, seamBottom),

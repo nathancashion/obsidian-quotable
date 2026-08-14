@@ -1,12 +1,25 @@
 import { RATIOS, type QuoteSource, type RatioKey } from "../types";
 import { computeLayout, coverScale, type Layout } from "./layouts";
 import { STYLES, type Palette, type StyleKey, type StyleTraits } from "./styles";
-import { drawLines, fitSingleLine, fitTextToBox, type FontSpec } from "./text";
+import {
+	drawStyledLines,
+	fitSingleLine,
+	fitTextToBox,
+	fitWrappedLines,
+	type FontSpec,
+	type StyledFontSpec,
+} from "./text";
 
 /**
  * The single renderer. Both the live preview and the exported PNG call this, so
  * what the user sees is what they get, with no rasterization step in between.
  */
+
+/** Longest a title may run before it is shrunk and then truncated. */
+const TITLE_MAX_LINES = 2;
+
+const clamp = (value: number, min: number, max: number) =>
+	Math.min(max, Math.max(min, value));
 
 /** Anything drawable by ctx.drawImage that also reports intrinsic size. */
 export type CoverImage = CanvasImageSource & { width: number; height: number };
@@ -83,33 +96,78 @@ function drawTextBlock(
 	const hasAuthor = !!source.author?.trim();
 	const hasMeta = hasTitle || hasAuthor;
 
-	// Attribution is sized from the card, not from the fitted quote: deriving it
-	// from the quote size would be circular, and it must be reserved before fitting.
-	const metaSize = 2.6 * unit;
-	// Reserved unconditionally, so it must be generous enough to look right when the
-	// quote fills the panel exactly and there is no slack left to widen it.
-	const metaGap = metaSize * 1.9;
-	const metaLines = (hasTitle ? 1 : 0) + (hasAuthor ? 1 : 0);
-	const metaHeight = hasMeta ? metaGap + metaSize * 1.32 * metaLines : 0;
-
 	const barGutter = traits.accentBar ? 3.2 * unit : 0;
 	const textX = content.x + barGutter;
 	const textW = content.w - barGutter;
 
-	const fitted = fitTextToBox(
-		ctx,
-		source.quote,
-		{ w: textW, h: content.h - metaHeight },
-		{
-			font: (size) => `${traits.quoteWeight} ${size}px ${traits.quoteFamily}`,
-			lineHeightRatio: traits.lineHeightRatio,
-			minSize: 1.8 * unit,
-			// Capped well below the box height on purpose. Letting a short quote grow
-			// until it fills the panel produces billboard-sized text that reads as a
-			// mistake; past this size the card should gain whitespace, not type.
-			maxSize: 6 * unit,
-		}
-	);
+	const titleFont: FontSpec = (s) => `600 ${s}px ${traits.metaFamily}`;
+	const authorFont: FontSpec = (s) => `400 ${s}px ${traits.metaFamily}`;
+
+	// Bold maps to 700 regardless of the style's base weight; italic relies on the
+	// family having a real italic, which every serif and sans in our stacks does.
+	const quoteFont: StyledFontSpec = (size, bold, italic) =>
+		`${italic ? "italic " : ""}${bold ? 700 : traits.quoteWeight} ${size}px ${traits.quoteFamily}`;
+
+	/** Everything about the attribution block that follows from its font size. */
+	const measureMeta = (metaSize: number) => {
+		const lineHeight = metaSize * 1.32;
+		// Wrapping the title here yields its exact line count, so the height reserved
+		// below is right whether it takes one line or two.
+		const title = hasTitle
+			? fitWrappedLines(
+					ctx,
+					source.title!.trim(),
+					textW,
+					titleFont,
+					metaSize,
+					TITLE_MAX_LINES
+				)
+			: null;
+		// The gap is reserved unconditionally, so it must be generous enough to look
+		// right when the quote fills the panel exactly and no slack remains to widen it.
+		const gap = metaSize * 1.9;
+		const height = hasMeta
+			? gap +
+				(title ? title.lines.length * lineHeight : 0) +
+				(hasAuthor ? lineHeight : 0)
+			: 0;
+		return { metaSize, lineHeight, title, gap, height };
+	};
+
+	const fitQuote = (metaHeight: number) =>
+		fitTextToBox(
+			ctx,
+			source.quote,
+			{ w: textW, h: content.h - metaHeight },
+			{
+				font: quoteFont,
+				lineHeightRatio: traits.lineHeightRatio,
+				minSize: 1.8 * unit,
+				// Capped well below the box height on purpose. Letting a short quote grow
+				// until it fills the panel produces billboard-sized text that reads as a
+				// mistake; past this size the card should gain whitespace, not type.
+				maxSize: 6 * unit,
+			}
+		);
+
+	// Attribution size is derived from the fitted quote rather than from the card.
+	// Sizing it from the card alone lets the two drift apart — a short quote fills
+	// the panel with large type while the byline stays small and looks like an
+	// afterthought. That is circular (the quote fit depends on the space the
+	// attribution reserves), so it is resolved in two passes: fit once against a
+	// nominal reservation to learn the quote size, then re-fit against the real one.
+	//
+	// The floor is set by legibility on a phone rather than by proportion. A card
+	// viewed full-width on a handset is displayed at roughly a third of its pixel
+	// size, so 4.2 units lands the title near 16pt as seen — readable without
+	// competing with the quote, which is what the ratio alone would drift below on
+	// long quotes.
+	let meta = measureMeta(3.2 * unit);
+	let fitted = fitQuote(meta.height);
+	meta = measureMeta(clamp(fitted.size * 0.75, 4.2 * unit, 5.6 * unit));
+	fitted = fitQuote(meta.height);
+
+	const { metaSize, lineHeight: metaLineHeight, title, gap: metaGap, height: metaHeight } = meta;
 
 	// Centre the whole block (quote + attribution) in the panel so short quotes
 	// don't strand a pool of empty space beneath them.
@@ -122,9 +180,8 @@ function drawTextBlock(
 	const blockHeight = fitted.height + metaHeight + extraGap;
 	const top = content.y + Math.max(0, (content.h - blockHeight) / 2);
 
-	ctx.font = `${traits.quoteWeight} ${fitted.size}px ${traits.quoteFamily}`;
 	ctx.fillStyle = palette.text;
-	const quoteEnd = drawLines(ctx, fitted, textX, top);
+	const quoteEnd = drawStyledLines(ctx, fitted, textX, top, quoteFont);
 
 	if (traits.accentBar) {
 		ctx.fillStyle = palette.accent;
@@ -139,16 +196,18 @@ function drawTextBlock(
 	if (!hasMeta) return;
 
 	let y = quoteEnd - fitted.lineHeight * (traits.lineHeightRatio - 1) + metaGap + extraGap;
-	if (hasTitle) {
-		const titleFont: FontSpec = (s) => `600 ${s}px ${traits.metaFamily}`;
-		const title = fitSingleLine(ctx, source.title!.trim(), textW, titleFont, metaSize);
+
+	if (title) {
 		ctx.font = titleFont(title.size);
 		ctx.fillStyle = palette.text;
-		ctx.fillText(title.text, textX, y);
-		y += metaSize * 1.32;
+		for (const line of title.lines) {
+			ctx.fillText(line, textX, y);
+			y += metaLineHeight;
+		}
 	}
+
 	if (hasAuthor) {
-		const authorFont: FontSpec = (s) => `400 ${s}px ${traits.metaFamily}`;
+		// The byline is a name, so it stays on one line and shrinks if it must.
 		const author = fitSingleLine(
 			ctx,
 			source.author!.trim(),

@@ -110,6 +110,26 @@ cover.onload = async () => {
       { source: DAWKINS, ratio, style:'pretty', palette: dpal[0], cover: dawkins, scale: 1 }, 300);
   }
 
+  g = section('Light palette (pure white) + 16:9 headroom');
+  const light = dpal[dpal.length-2];
+  for (const ratio of ['16:9','4:5']) {
+    await card(g, 'light-'+ratio.replace(':','x'),
+      { source: DAWKINS, ratio, style:'pretty', palette: light, cover: dawkins, scale: 1 }, 300);
+  }
+
+  g = section('Inline emphasis: bold, italic, both');
+  const EMPH = {
+    quote: "Other jobs might make demands on your **skills**, but if you are deficient you can *do something about it*. A lumberjack or a musician can improve with practice: ***try harder***. But lumberjacks and musicians are **not required to believe**.",
+    title: "Books do Furnish a Life",
+    author: "Richard Dawkins",
+  };
+  for (const ratio of ['16:9','4:5']) {
+    await card(g, 'emphasis-'+ratio.replace(':','x'),
+      { source: EMPH, ratio, style:'pretty', palette: dpal[dpal.length-2], cover: dawkins, scale: 1 }, 300);
+  }
+  await card(g, 'emphasis-classic',
+    { source: EMPH, ratio:'4:5', style:'classic', palette: dpal[dpal.length-2], cover: null, scale: 1 }, 260);
+
   g = section('No cover art available');
   await card(g, 'nocover-4x5',
     { source: SOURCE, ratio:'4:5', style:'pretty', palette: palettes[palettes.length-1], cover: null, scale: 1 }, 260);

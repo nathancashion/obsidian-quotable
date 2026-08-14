@@ -25,6 +25,8 @@ export const DEFAULT_SETTINGS: ShareQuoteSettings = {
 	// unrelated purposes (note banners, social preview images).
 	coverKeys: ["cover_image", "coverImage", "cover", "thumbnail", "image", "banner"],
 	defaultRatio: "4:5",
-	exportScale: 2,
+	// The base ratio sizes are already at social-native resolution (4:5 is
+	// 1200x1500), so 1x is the sensible default; 2x is for extra crispness.
+	exportScale: 1,
 	outputFolder: "Share Quote",
 };

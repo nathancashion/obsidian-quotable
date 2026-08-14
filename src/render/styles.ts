@@ -67,22 +67,28 @@ export const STYLES: Record<StyleKey, StyleTraits> = {
 	},
 };
 
-/** Neutral palettes always offered alongside the cover-derived ones. */
+/**
+ * Neutral palettes always offered alongside the cover-derived ones.
+ *
+ * Both are flat rather than graduated, and pure white/near-black rather than warm.
+ * A cream tint reads as an unintended colour cast next to cover-derived palettes
+ * that carry real colour.
+ */
 export const LIGHT_PALETTE: Palette = {
 	id: "light",
-	from: "#f7f5f0",
-	to: "#eceae3",
-	backdrop: "#e4e1d8",
-	text: "#232323",
-	muted: "#6d6a63",
-	accent: "#232323",
+	from: "#ffffff",
+	to: "#ffffff",
+	backdrop: "#ffffff",
+	text: "#1c1c1c",
+	muted: "rgba(0,0,0,0.55)",
+	accent: "#1c1c1c",
 };
 
 export const DARK_PALETTE: Palette = {
 	id: "dark",
 	from: "#2b2b2b",
 	to: "#4a4a48",
-	backdrop: "#f2f0ea",
+	backdrop: "#ffffff",
 	text: "#ffffff",
 	muted: "rgba(255,255,255,0.62)",
 	accent: "rgba(255,255,255,0.85)",

@@ -1,39 +1,53 @@
-import { Modal, Plugin } from "obsidian";
-import { renderSpikeCard } from "./render/spike";
-import {
-	canvasToBlob,
-	copyImageToClipboard,
-	notify,
-	probeCapabilities,
-	saveBlobToVault,
-	shareImageFile,
-	type ExportCapabilities,
-} from "./export/output";
-
-const RATIOS: Record<string, { w: number; h: number }> = {
-	"16:9": { w: 1920, h: 1080 },
-	"1:1": { w: 1400, h: 1400 },
-	"4:5": { w: 1200, h: 1500 },
-	"9:16": { w: 1080, h: 1920 },
-};
+import { MarkdownView, Plugin, type Editor, type TFile } from "obsidian";
+import { resolveMetadata } from "./capture/metadata";
+import { captureFromEditor } from "./capture/selection";
+import { notify, probeCapabilities, type ExportCapabilities } from "./export/output";
+import { DEFAULT_SETTINGS, type ShareQuoteSettings } from "./settings";
+import { ShareModal } from "./ui/ShareModal";
 
 export default class ShareQuotePlugin extends Plugin {
+	settings: ShareQuoteSettings = DEFAULT_SETTINGS;
 	capabilities!: ExportCapabilities;
 
 	async onload() {
 		this.capabilities = probeCapabilities();
-		console.log("[share-quote] capabilities", this.capabilities);
+		await this.loadSettings();
 
-		// --- Phase 0 spike commands (removed once Phase 3 lands a real modal) ---
 		this.addCommand({
-			id: "spike-render-preview",
-			name: "Spike: preview test card",
-			callback: () => new SpikeModal(this).open(),
+			id: "share-quote",
+			name: "Share quote as image",
+			editorCallback: (editor, view) => {
+				if (view instanceof MarkdownView) this.share(editor, view.file);
+			},
 		});
 
+		this.registerEvent(
+			this.app.workspace.on("editor-menu", (menu, editor, view) => {
+				if (!(view instanceof MarkdownView) || !view.file) return;
+				// Only offer the action when there is actually something to capture.
+				if (!captureFromEditor(editor)) return;
+				menu.addItem((item) =>
+					item
+						.setTitle("Share quote as image")
+						.setIcon("image")
+						.onClick(() => this.share(editor, view.file))
+				);
+			})
+		);
+
+		this.addRibbonIcon("image", "Share quote as image", () => {
+			const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+			if (!view) {
+				notify("Open a note to share a quote from it");
+				return;
+			}
+			this.share(view.editor, view.file);
+		});
+
+		// Useful when diagnosing platform differences, especially on iOS.
 		this.addCommand({
-			id: "spike-report-capabilities",
-			name: "Spike: report export capabilities",
+			id: "report-capabilities",
+			name: "Report export capabilities",
 			callback: () => {
 				const c = this.capabilities;
 				notify(
@@ -43,76 +57,37 @@ export default class ShareQuotePlugin extends Plugin {
 			},
 		});
 	}
-}
 
-class SpikeModal extends Modal {
-	private ratio: keyof typeof RATIOS = "16:9";
-	private canvas!: HTMLCanvasElement;
-
-	constructor(private plugin: ShareQuotePlugin) {
-		super(plugin.app);
-	}
-
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.addClass("share-quote-modal");
-		contentEl.createEl("h3", { text: "Share Quote — Phase 0 spike" });
-
-		this.canvas = contentEl.createEl("canvas", { cls: "share-quote-preview" });
-
-		const ratios = contentEl.createDiv({ cls: "share-quote-row" });
-		for (const key of Object.keys(RATIOS)) {
-			const btn = ratios.createEl("button", { text: key });
-			btn.onclick = () => {
-				this.ratio = key as keyof typeof RATIOS;
-				ratios.findAll("button").forEach((b) => b.removeClass("is-active"));
-				btn.addClass("is-active");
-				this.draw();
-			};
-			if (key === this.ratio) btn.addClass("is-active");
+	private share(editor: Editor, file: TFile | null) {
+		if (!file) {
+			notify("This note has no file on disk");
+			return;
 		}
 
-		const actions = contentEl.createDiv({ cls: "share-quote-row" });
-
-		const save = actions.createEl("button", { text: "Save to vault", cls: "mod-cta" });
-		save.onclick = async () => {
-			const blob = await canvasToBlob(this.canvas);
-			const file = await saveBlobToVault(
-				this.app,
-				blob,
-				"Share Quote",
-				`spike-${this.ratio.replace(":", "x")}`
-			);
-			notify(`Saved ${file.path}`);
-		};
-
-		if (this.plugin.capabilities.clipboardImage) {
-			const copy = actions.createEl("button", { text: "Copy image" });
-			copy.onclick = async () => {
-				const blob = await canvasToBlob(this.canvas);
-				notify((await copyImageToClipboard(blob)) ? "Copied to clipboard" : "Copy failed");
-			};
+		const captured = captureFromEditor(editor);
+		if (!captured) {
+			notify("Select some text, or put the cursor in a quote block");
+			return;
 		}
 
-		if (this.plugin.capabilities.shareFiles) {
-			const share = actions.createEl("button", { text: "Share…" });
-			share.onclick = async () => {
-				const blob = await canvasToBlob(this.canvas);
-				await shareImageFile(blob, "quote.png");
-			};
-		}
+		const source = resolveMetadata(this.app, file, captured, this.settings);
 
-		this.draw();
+		new ShareModal(
+			{
+				app: this.app,
+				settings: this.settings,
+				capabilities: this.capabilities,
+				insertEmbed: (path) => editor.replaceSelection(`![[${path}]]\n`),
+			},
+			source
+		).open();
 	}
 
-	private async draw() {
-		// Fonts must be resolved before the first measureText, or the fit will be wrong.
-		await document.fonts.ready;
-		const { w, h } = RATIOS[this.ratio];
-		renderSpikeCard(this.canvas, { width: w, height: h, cover: null });
+	async loadSettings() {
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 	}
 
-	onClose() {
-		this.contentEl.empty();
+	async saveSettings() {
+		await this.saveData(this.settings);
 	}
 }

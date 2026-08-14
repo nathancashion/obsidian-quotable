@@ -1,4 +1,4 @@
-import { requestUrl, type App } from "obsidian";
+import { TFile, requestUrl, type App } from "obsidian";
 import type { CoverRef } from "./types";
 
 /**
@@ -32,8 +32,10 @@ function imageFromBlob(blob: Blob): Promise<LoadedCover> {
 
 export async function loadCover(app: App, ref: CoverRef): Promise<LoadedCover> {
 	if (ref.kind === "vault") {
-		const file = app.vault.getFileByPath(ref.path);
-		if (!file) throw new Error(`cover not found in vault: ${ref.path}`);
+		// getAbstractFileByPath rather than getFileByPath: the latter postdates the
+		// minAppVersion this plugin declares.
+		const file = app.vault.getAbstractFileByPath(ref.path);
+		if (!(file instanceof TFile)) throw new Error(`cover not found in vault: ${ref.path}`);
 		const bytes = await app.vault.readBinary(file);
 		return imageFromBlob(new Blob([bytes]));
 	}
