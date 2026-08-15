@@ -79,8 +79,11 @@ export class ShareQuoteSettingTab extends PluginSettingTab {
 			});
 
 		new Setting(containerEl)
-			.setName("Save images to")
-			.setDesc("Vault folder for saved images. Leave empty to save at the vault root.")
+			.setName("Vault folder for embeds")
+			.setDesc(
+				"Where 'Insert in note' stores its image. Saving to your device uses a " +
+					"system dialog instead, so this doesn't affect it. Empty means the vault root."
+			)
 			.addText((text) =>
 				text
 					.setPlaceholder("Share Quote")

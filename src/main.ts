@@ -54,7 +54,8 @@ export default class ShareQuotePlugin extends Plugin {
 				const c = this.capabilities;
 				notify(
 					`platform: ${c.platform}\ntoBlob: ${c.canvasToBlob}\n` +
-						`clipboard image: ${c.clipboardImage}\nshare files: ${c.shareFiles}`
+						`clipboard image: ${c.clipboardImage}\nshare files: ${c.shareFiles}\n` +
+						`save dialog: ${c.filePicker}\nfolder dialog: ${c.directoryPicker}`
 				);
 			},
 		});

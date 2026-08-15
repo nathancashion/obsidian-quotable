@@ -36,9 +36,21 @@ detection got it wrong.
 
 ### Exporting
 
-Save to the vault, copy to the clipboard, insert an embed at the cursor, or copy
-the quote as text. On mobile you also get the native share sheet. Options that
-your platform can't support aren't shown — the plugin probes for them at load.
+| Action | What it does |
+| --- | --- |
+| **Save image** | Writes the current ratio to your device. Desktop opens a save dialog; on iOS it goes through the share sheet, where **Save Image** puts it in Photos. |
+| **Save collection** | All four ratios at once — a folder dialog on desktop, one share sheet on iOS. For posting the same quote across platforms. |
+| **Copy image** | Straight to the clipboard. |
+| **Insert in note** | Saves into the vault and embeds it at the cursor. This is the only action that writes to your vault. |
+
+Options your platform can't support aren't shown — the plugin probes for them at
+load, and `Share Quote: Report export capabilities` will tell you what it found.
+
+iOS has no way for a plugin to write to the photo library directly; the share sheet
+is the supported route, which is why **Save image** opens it there rather than
+saving silently. On desktop, saving prefers a real dialog and falls back to a
+plain download if the File System Access API isn't available — the button label
+tells you which you'll get (an ellipsis means a dialog).
 
 ## Where the text comes from
 
@@ -110,7 +122,8 @@ Notes without cover art still work — you get the neutral palettes.
 
 - **Defaults** — aspect ratio and style the sheet opens on; whether to draw with your
   current theme's fonts instead of the style's own.
-- **Export** — image scale, and which vault folder images are saved to.
+- **Export** — image scale, and the vault folder **Insert in note** writes to. Saving
+  to your device uses a system dialog, so it ignores that folder.
 - **Frontmatter** — the key lists above, comma-separated and checked in order.
 
 ## Development

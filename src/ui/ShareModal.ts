@@ -10,8 +10,11 @@ import {
 	copyImageToClipboard,
 	notify,
 	saveBlobToVault,
-	shareImageFile,
+	saveFileToDevice,
+	saveFilesToDevice,
+	shareImageFiles,
 	type ExportCapabilities,
+	type OutputFile,
 } from "../export/output";
 
 /**
@@ -148,30 +151,68 @@ export class ShareModal extends Modal {
 
 	// --- actions ---
 
+	/**
+	 * On mobile the save path *is* the share sheet — a WebView cannot write to the
+	 * photo library directly, and the sheet's "Save Image" is how a user gets there.
+	 * A separate Share button would then open the identical sheet, so it is dropped.
+	 */
+	private get savesViaShareSheet(): boolean {
+		return Platform.isMobile && this.deps.capabilities.shareFiles;
+	}
+
 	private buildActions(parent: HTMLElement) {
 		const row = parent.createDiv({ cls: "share-quote-row share-quote-actions" });
+		const { capabilities } = this.deps;
 
-		const save = row.createEl("button", { text: "Save image", cls: "mod-cta" });
-		save.onclick = () => void this.withExport(async (blob) => {
-			const file = await saveBlobToVault(
-				this.app,
-				blob,
-				this.deps.settings.outputFolder,
-				this.baseName()
-			);
-			notify(`Saved ${file.path}`);
+		const saveLabel = Platform.isIosApp
+			? "Save to Photos"
+			: this.savesViaShareSheet
+				? "Save image"
+				: // The ellipsis promises a dialog, so only use it when there will be one.
+					capabilities.filePicker
+					? "Save image…"
+					: "Save image";
+
+		const save = row.createEl("button", { text: saveLabel, cls: "mod-cta" });
+		save.onclick = () => void this.withExport(async () => {
+			const file = await this.outputFor(this.ratio);
+			if (this.savesViaShareSheet) {
+				await shareImageFiles([file]);
+				return;
+			}
+			if ((await saveFileToDevice(file)) === "saved") notify(`Saved ${file.name}`);
 		});
 
-		if (this.deps.capabilities.shareFiles) {
+		const collection = row.createEl("button", { text: "Save collection" });
+		collection.setAttribute(
+			"aria-label",
+			"Save every aspect ratio: 16:9, 1:1, 4:5 and 9:16"
+		);
+		collection.onclick = () => void this.withExport(async () => {
+			const files: OutputFile[] = [];
+			for (const ratio of Object.keys(RATIOS) as RatioKey[]) {
+				files.push(await this.outputFor(ratio));
+			}
+			if (this.savesViaShareSheet) {
+				await shareImageFiles(files);
+				return;
+			}
+			if ((await saveFilesToDevice(files)) === "saved") {
+				notify(`Saved ${files.length} images`);
+			}
+		});
+
+		if (capabilities.shareFiles && !this.savesViaShareSheet) {
 			const share = row.createEl("button", { text: "Share…" });
-			share.onclick = () => void this.withExport(async (blob) => {
-				await shareImageFile(blob, `${this.baseName()}.png`);
+			share.onclick = () => void this.withExport(async () => {
+				await shareImageFiles([await this.outputFor(this.ratio)]);
 			});
 		}
 
-		if (this.deps.capabilities.clipboardImage) {
+		if (capabilities.clipboardImage) {
 			const copy = row.createEl("button", { text: "Copy image" });
-			copy.onclick = () => void this.withExport(async (blob) => {
+			copy.onclick = () => void this.withExport(async () => {
+				const { blob } = await this.outputFor(this.ratio);
 				notify(
 					(await copyImageToClipboard(blob))
 						? "Image copied to clipboard"
@@ -182,45 +223,43 @@ export class ShareModal extends Modal {
 
 		if (this.deps.insertEmbed) {
 			const insert = row.createEl("button", { text: "Insert in note" });
-			insert.onclick = () => void this.withExport(async (blob) => {
+			insert.onclick = () => void this.withExport(async () => {
+				const { blob } = await this.outputFor(this.ratio);
 				const file = await saveBlobToVault(
 					this.app,
 					blob,
 					this.deps.settings.outputFolder,
-					this.baseName()
+					`${this.baseName()} ${this.ratio.replace(":", "x")}`
 				);
 				this.deps.insertEmbed?.(file.path);
 				notify(`Inserted ${file.name}`);
 				this.close();
 			});
 		}
+	}
 
-		const copyText = row.createEl("button", { text: "Copy text" });
-		copyText.onclick = async () => {
-			const parts = [this.source.quote];
-			const attribution = [this.source.author, this.source.title]
-				.filter((v) => v?.trim())
-				.join(", ");
-			if (attribution) parts.push(`— ${attribution}`);
-			await navigator.clipboard.writeText(parts.join("\n\n"));
-			notify("Quote copied");
+	/** Render one ratio at export scale, ready to write out. */
+	private async outputFor(ratio: RatioKey): Promise<OutputFile> {
+		const offscreen = document.createElement("canvas");
+		renderCard(offscreen, {
+			source: this.source,
+			ratio,
+			style: this.style,
+			palette: this.palettes[this.paletteIndex],
+			cover: this.cover?.image as CoverImage | undefined,
+			scale: this.deps.settings.exportScale,
+			fonts: this.deps.fonts,
+		});
+		return {
+			blob: await canvasToBlob(offscreen),
+			name: `${this.baseName()} ${ratio.replace(":", "x")}.png`,
 		};
 	}
 
-	/** Render at export scale, hand the blob to `run`, and surface any failure. */
-	private async withExport(run: (blob: Blob) => Promise<void>) {
+	/** Run an export action, surfacing any failure rather than dropping it. */
+	private async withExport(run: () => Promise<void>) {
 		try {
-			const offscreen = document.createElement("canvas");
-			renderCard(offscreen, {
-				source: this.source,
-				ratio: this.ratio,
-				style: this.style,
-				palette: this.palettes[this.paletteIndex],
-				cover: this.cover?.image as CoverImage | undefined,
-				scale: this.deps.settings.exportScale,
-				fonts: this.deps.fonts,
-			});
-			await run(await canvasToBlob(offscreen));
+			await run();
 		} catch (err) {
 			console.error("[share-quote] export failed", err);
 			notify(`Export failed: ${(err as Error).message}`);
@@ -229,12 +268,13 @@ export class ShareModal extends Modal {
 
 	// --- rendering ---
 
+	/** Filename stem, without ratio suffix or extension. */
 	private baseName(): string {
 		const stem = (this.source.title || this.source.quote)
 			.slice(0, 48)
 			.replace(/[\\/:*?"<>|#^[\]]/g, "")
 			.trim();
-		return `${stem || "quote"} ${this.ratio.replace(":", "x")}`;
+		return stem || "quote";
 	}
 
 	private async draw() {

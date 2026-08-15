@@ -9,3 +9,4 @@ dev-harness/*.js
 dev-harness/*.mjs
 # Local test assets — real book covers, not ours to redistribute.
 dev-harness/fixtures/
+dev-harness/styles.css
