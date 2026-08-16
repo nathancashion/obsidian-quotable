@@ -103,7 +103,7 @@ export function probeCapabilities(): ExportCapabilities {
 	}
 
 	return {
-		canvasToBlob: typeof document.createElement("canvas").toBlob === "function",
+		canvasToBlob: typeof createEl("canvas").toBlob === "function",
 		clipboardImage,
 		shareFiles,
 		filePicker: typeof filePicker() === "function",

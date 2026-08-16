@@ -93,7 +93,12 @@ export default class QuotablePlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		// loadData() is typed `any`. Narrowing through `unknown` keeps the assignment
+		// type-safe and also guards against a settings file that isn't an object.
+		const stored: unknown = await this.loadData();
+		const overrides =
+			stored && typeof stored === "object" ? (stored as Partial<QuotableSettings>) : {};
+		this.settings = { ...DEFAULT_SETTINGS, ...overrides };
 	}
 
 	async saveSettings() {

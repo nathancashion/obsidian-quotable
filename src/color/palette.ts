@@ -14,7 +14,7 @@ const SAMPLE_EDGE = 48;
 
 /** Downsample to a small canvas and read the pixels back. */
 function samplePixels(image: CanvasImageSource & { width: number; height: number }): RGB[] {
-	const canvas = document.createElement("canvas");
+	const canvas = createEl("canvas");
 	canvas.width = SAMPLE_EDGE;
 	canvas.height = SAMPLE_EDGE;
 	const ctx = canvas.getContext("2d", { willReadFrequently: true });

@@ -8,7 +8,8 @@
  */
 import esbuild from "esbuild";
 import process from "process";
-import builtins from "builtin-modules";
+// Node's own list, rather than the `builtin-modules` package it replaces.
+import { builtinModules } from "module";
 import { existsSync, mkdirSync, copyFileSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
@@ -68,7 +69,7 @@ const context = await esbuild.context({
 		"@lezer/common",
 		"@lezer/highlight",
 		"@lezer/lr",
-		...builtins,
+		...builtinModules,
 	],
 	format: "cjs",
 	target: "es2018",

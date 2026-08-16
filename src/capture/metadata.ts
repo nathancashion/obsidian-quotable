@@ -93,9 +93,8 @@ export function resolveMetadata(
 	captured: CapturedText,
 	settings: QuotableSettings
 ): QuoteSource {
-	const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter as
-		| Record<string, unknown>
-		| undefined;
+	const frontmatter: Record<string, unknown> | undefined =
+		app.metadataCache.getFileCache(file)?.frontmatter;
 
 	const fromCite = captured.cite ? parseCite(captured.cite) : {};
 

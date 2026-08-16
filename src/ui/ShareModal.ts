@@ -258,13 +258,13 @@ export class ShareModal extends Modal {
 
 	/** Render one ratio at export scale, ready to write out. */
 	private async outputFor(ratio: RatioKey): Promise<OutputFile> {
-		const offscreen = document.createElement("canvas");
+		const offscreen = createEl("canvas");
 		renderCard(offscreen, {
 			source: this.source,
 			ratio,
 			style: this.style,
 			palette: this.palettes[this.paletteIndex],
-			cover: this.cover?.image as CoverImage | undefined,
+			cover: this.cover?.image,
 			scale: this.deps.settings.exportScale,
 			fonts: this.deps.fonts,
 		});
@@ -303,7 +303,7 @@ export class ShareModal extends Modal {
 			ratio: this.ratio,
 			style: this.style,
 			palette: this.palettes[this.paletteIndex],
-			cover: this.cover?.image as CoverImage | undefined,
+			cover: this.cover?.image,
 			scale: PREVIEW_SCALE,
 			fonts: this.deps.fonts,
 		});
@@ -313,7 +313,7 @@ export class ShareModal extends Modal {
 		if (!this.source.cover) return;
 		try {
 			this.cover = await loadCover(this.app, this.source.cover);
-			this.palettes = palettesFromCover(this.cover.image as CoverImage);
+			this.palettes = palettesFromCover(this.cover.image);
 			this.paletteIndex = 0;
 			this.renderSwatches();
 			await this.draw();

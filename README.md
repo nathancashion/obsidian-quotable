@@ -208,8 +208,9 @@ none of this code is reached.
 set in settings and embedding it at your cursor. Everything else leaves your vault
 untouched.
 
-**Clipboard.** **Copy image** puts a PNG on the clipboard when you press it, and at no
-other time.
+**Clipboard.** **Copy image** writes a PNG to the clipboard when you press it, and at
+no other time. Quotable never *reads* the clipboard, so nothing you copied elsewhere is
+ever seen by it.
 
 ## Built with Claude
 
