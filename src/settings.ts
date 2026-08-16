@@ -1,7 +1,7 @@
 import type { StyleKey } from "./render/styles";
 import type { RatioKey } from "./types";
 
-export interface ShareQuoteSettings {
+export interface QuotableSettings {
 	/**
 	 * Frontmatter keys consulted in order, first match wins. Defaults cover the
 	 * conventions used by Readwise exports, Zotero/citation notes, and hand-written
@@ -21,7 +21,7 @@ export interface ShareQuoteSettings {
 	useThemeFonts: boolean;
 }
 
-export const DEFAULT_SETTINGS: ShareQuoteSettings = {
+export const DEFAULT_SETTINGS: QuotableSettings = {
 	titleKeys: ["title", "source", "book", "work", "publication"],
 	authorKeys: ["author", "authors", "creator", "by"],
 	// `cover_image` leads deliberately. Generic keys like `image` and `banner` are
@@ -33,7 +33,7 @@ export const DEFAULT_SETTINGS: ShareQuoteSettings = {
 	// The base ratio sizes are already at social-native resolution (4:5 is
 	// 1200x1500), so 1x is the sensible default; 2x is for extra crispness.
 	exportScale: 1,
-	outputFolder: "Share Quote",
+	outputFolder: "Quotable",
 	useThemeFonts: false,
 };
 

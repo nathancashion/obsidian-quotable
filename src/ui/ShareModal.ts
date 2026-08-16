@@ -3,7 +3,7 @@ import { palettesFromCover } from "../color/palette";
 import { loadCover, type LoadedCover } from "../cover";
 import { renderCard, type CoverImage } from "../render/canvas";
 import { DARK_PALETTE, LIGHT_PALETTE, STYLE_LABELS, type Palette, type StyleKey } from "../render/styles";
-import type { ShareQuoteSettings } from "../settings";
+import type { QuotableSettings } from "../settings";
 import { RATIOS, type QuoteSource, type RatioKey } from "../types";
 import {
 	canvasToBlob,
@@ -28,7 +28,7 @@ const PREVIEW_SCALE = 0.5;
 
 export interface ShareModalDeps {
 	app: App;
-	settings: ShareQuoteSettings;
+	settings: QuotableSettings;
 	capabilities: ExportCapabilities;
 	/** Font stacks overriding the style's own, when theme fonts are enabled. */
 	fonts?: { quote?: string; meta?: string };
@@ -59,16 +59,16 @@ export class ShareModal extends Modal {
 
 	async onOpen() {
 		const { contentEl, modalEl } = this;
-		modalEl.addClass("share-quote-modal");
+		modalEl.addClass("quotable-modal");
 		contentEl.empty();
 
-		contentEl.createEl("h3", { text: "Share quote", cls: "share-quote-heading" });
+		contentEl.createEl("h3", { text: "Create image", cls: "quotable-heading" });
 
-		this.canvas = contentEl.createEl("canvas", { cls: "share-quote-preview" });
+		this.canvas = contentEl.createEl("canvas", { cls: "quotable-preview" });
 
 		this.buildRatioRow(contentEl);
 		this.buildStyleRow(contentEl);
-		this.swatchRow = contentEl.createDiv({ cls: "share-quote-swatches" });
+		this.swatchRow = contentEl.createDiv({ cls: "quotable-swatches" });
 		this.buildActions(contentEl);
 		this.buildDetails(contentEl);
 
@@ -88,7 +88,7 @@ export class ShareModal extends Modal {
 	// --- controls ---
 
 	private buildRatioRow(parent: HTMLElement) {
-		const row = parent.createDiv({ cls: "share-quote-row share-quote-ratios" });
+		const row = parent.createDiv({ cls: "quotable-row quotable-ratios" });
 		for (const key of Object.keys(RATIOS) as RatioKey[]) {
 			const btn = row.createEl("button", { text: key });
 			btn.toggleClass("is-active", key === this.ratio);
@@ -101,7 +101,7 @@ export class ShareModal extends Modal {
 	}
 
 	private buildStyleRow(parent: HTMLElement) {
-		const row = parent.createDiv({ cls: "share-quote-row share-quote-styles" });
+		const row = parent.createDiv({ cls: "quotable-row quotable-styles" });
 		for (const key of Object.keys(STYLE_LABELS) as StyleKey[]) {
 			const btn = row.createEl("button", { text: STYLE_LABELS[key] });
 			btn.toggleClass("is-active", key === this.style);
@@ -116,8 +116,10 @@ export class ShareModal extends Modal {
 	private renderSwatches() {
 		this.swatchRow.empty();
 		this.palettes.forEach((palette, index) => {
-			const swatch = this.swatchRow.createEl("button", { cls: "share-quote-swatch" });
-			swatch.style.background = palette.from;
+			const swatch = this.swatchRow.createEl("button", { cls: "quotable-swatch" });
+			// The colour is data, so it has to come from JS — but it is passed as a
+			// custom property so the styling itself stays in the stylesheet.
+			swatch.style.setProperty("--quotable-swatch", palette.from);
 			swatch.setAttribute("aria-label", palette.id);
 			swatch.toggleClass("is-active", index === this.paletteIndex);
 			swatch.onclick = () => {
@@ -131,7 +133,7 @@ export class ShareModal extends Modal {
 	}
 
 	private buildDetails(parent: HTMLElement) {
-		const details = parent.createEl("details", { cls: "share-quote-details" });
+		const details = parent.createEl("details", { cls: "quotable-details" });
 		details.createEl("summary", { text: "Edit attribution" });
 
 		new Setting(details).setName("Title").addText((text) =>
@@ -161,7 +163,7 @@ export class ShareModal extends Modal {
 	}
 
 	private buildActions(parent: HTMLElement) {
-		const row = parent.createDiv({ cls: "share-quote-row share-quote-actions" });
+		const row = parent.createDiv({ cls: "quotable-row quotable-actions" });
 		const { capabilities } = this.deps;
 
 		const saveLabel = Platform.isIosApp
@@ -261,7 +263,7 @@ export class ShareModal extends Modal {
 		try {
 			await run();
 		} catch (err) {
-			console.error("[share-quote] export failed", err);
+			console.error("[quotable] export failed", err);
 			notify(`Export failed: ${(err as Error).message}`);
 		}
 	}
@@ -302,7 +304,7 @@ export class ShareModal extends Modal {
 		} catch (err) {
 			// A missing or unreachable cover is common and not worth a modal error;
 			// the neutral palettes already on screen remain usable.
-			console.warn("[share-quote] cover unavailable", err);
+			console.warn("[quotable] cover unavailable", err);
 			notify("Cover art could not be loaded — using neutral colours");
 		}
 	}

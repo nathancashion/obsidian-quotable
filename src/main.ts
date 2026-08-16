@@ -2,22 +2,24 @@ import { MarkdownView, Plugin, type Editor, type TFile } from "obsidian";
 import { resolveMetadata } from "./capture/metadata";
 import { captureFromEditor } from "./capture/selection";
 import { notify, probeCapabilities, type ExportCapabilities } from "./export/output";
-import { DEFAULT_SETTINGS, resolveThemeFonts, type ShareQuoteSettings } from "./settings";
+import { DEFAULT_SETTINGS, resolveThemeFonts, type QuotableSettings } from "./settings";
 import { ShareModal } from "./ui/ShareModal";
-import { ShareQuoteSettingTab } from "./ui/SettingsTab";
+import { QuotableSettingTab } from "./ui/SettingsTab";
 
-export default class ShareQuotePlugin extends Plugin {
-	settings: ShareQuoteSettings = DEFAULT_SETTINGS;
+export default class QuotablePlugin extends Plugin {
+	settings: QuotableSettings = DEFAULT_SETTINGS;
 	capabilities!: ExportCapabilities;
 
 	async onload() {
 		this.capabilities = probeCapabilities();
 		await this.loadSettings();
-		this.addSettingTab(new ShareQuoteSettingTab(this));
+		this.addSettingTab(new QuotableSettingTab(this));
 
+		// The palette prefixes every command with the plugin name, so neither the id
+		// nor the name repeats it — this reads as "Quotable: Create image".
 		this.addCommand({
-			id: "share-quote",
-			name: "Share quote as image",
+			id: "create-image",
+			name: "Create image",
 			editorCallback: (editor, view) => {
 				if (view instanceof MarkdownView) this.share(editor, view.file);
 			},
@@ -30,14 +32,14 @@ export default class ShareQuotePlugin extends Plugin {
 				if (!captureFromEditor(editor)) return;
 				menu.addItem((item) =>
 					item
-						.setTitle("Share quote as image")
+						.setTitle("Create quote image")
 						.setIcon("image")
 						.onClick(() => this.share(editor, view.file))
 				);
 			})
 		);
 
-		this.addRibbonIcon("image", "Share quote as image", () => {
+		this.addRibbonIcon("image", "Create quote image", () => {
 			const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 			if (!view) {
 				notify("Open a note to share a quote from it");

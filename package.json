@@ -1,6 +1,6 @@
 {
-	"name": "obsidian-share-quote",
-	"version": "0.1.0",
+	"name": "obsidian-quotable",
+	"version": "0.2.0",
 	"description": "Turn selected text into a shareable image.",
 	"main": "main.js",
 	"private": true,

@@ -1,10 +1,10 @@
-/* Share Quote — share sheet */
+/* Quotable — share sheet */
 
-.share-quote-modal {
-	--share-quote-gap: var(--size-4-2);
+.quotable-modal {
+	--quotable-gap: var(--size-4-2);
 }
 
-.share-quote-modal .share-quote-heading {
+.quotable-modal .quotable-heading {
 	margin: 0 0 var(--size-4-3);
 	text-align: center;
 	font-size: var(--font-ui-large);
@@ -12,7 +12,7 @@
 
 /* The preview is a canvas at the card's own aspect ratio, so it must scale to the
    modal width without ever pushing the actions off screen on a phone. */
-.share-quote-modal .share-quote-preview {
+.quotable-modal .quotable-preview {
 	display: block;
 	max-width: 100%;
 	max-height: 42vh;
@@ -23,25 +23,25 @@
 	box-shadow: 0 2px 14px rgba(0, 0, 0, 0.25);
 }
 
-.share-quote-modal .share-quote-row {
+.quotable-modal .quotable-row {
 	display: flex;
 	flex-wrap: wrap;
-	gap: var(--share-quote-gap);
+	gap: var(--quotable-gap);
 	justify-content: center;
 	margin-bottom: var(--size-4-3);
 }
 
-.share-quote-modal .share-quote-row button.is-active {
+.quotable-modal .quotable-row button.is-active {
 	background: var(--interactive-accent);
 	color: var(--text-on-accent);
 }
 
-.share-quote-modal .share-quote-ratios button {
+.quotable-modal .quotable-ratios button {
 	min-width: 4.2em;
 	font-variant-numeric: tabular-nums;
 }
 
-.share-quote-modal .share-quote-swatches {
+.quotable-modal .quotable-swatches {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--size-4-2);
@@ -49,12 +49,14 @@
 	margin-bottom: var(--size-4-4);
 }
 
-.share-quote-modal .share-quote-swatch {
+.quotable-modal .quotable-swatch {
 	width: 2em;
 	height: 2em;
 	padding: 0;
 	border-radius: 50%;
 	border: 2px solid var(--background-modifier-border);
+	/* Set per swatch from the extracted palette. */
+	background: var(--quotable-swatch, var(--background-secondary));
 	box-shadow: none;
 	cursor: pointer;
 }
@@ -62,42 +64,42 @@
 /* Selection is drawn with an inner ring rather than an outline, leaving `outline`
    free for the focus indicator. Sharing one property meant the selected swatch
    swallowed the focus ring and keyboard users lost their place in the row. */
-.share-quote-modal .share-quote-swatch.is-active {
+.quotable-modal .quotable-swatch.is-active {
 	border-color: var(--text-normal);
 	box-shadow: inset 0 0 0 2px var(--background-primary);
 }
 
 /* Applies to swatches whether or not they are the selected one. */
-.share-quote-modal .share-quote-swatch:focus-visible {
+.quotable-modal .quotable-swatch:focus-visible {
 	outline: 2px solid var(--interactive-accent);
 	outline-offset: 3px;
 }
 
-.share-quote-modal .share-quote-details {
+.quotable-modal .quotable-details {
 	margin-top: var(--size-4-2);
 	border-top: 1px solid var(--background-modifier-border);
 	padding-top: var(--size-4-2);
 }
 
-.share-quote-modal .share-quote-details summary {
+.quotable-modal .quotable-details summary {
 	cursor: pointer;
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 }
 
-.share-quote-modal .share-quote-details .setting-item {
+.quotable-modal .quotable-details .setting-item {
 	border: none;
 	padding: var(--size-4-2) 0 0;
 }
 
 /* Settings tab */
 
-.share-quote-settings-note {
+.quotable-settings-note {
 	margin: 0 0 var(--size-4-3);
 }
 
 /* Key lists are long enough that the default input width truncates them. */
-input.share-quote-key-input {
+input.quotable-key-input {
 	width: 100%;
 	min-width: 18em;
 	font-family: var(--font-monospace);

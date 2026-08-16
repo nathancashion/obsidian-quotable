@@ -1,0 +1,71 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Share Quote — README samples</title>
+<style>
+  body { background:#1e1e1e; color:#ddd; font-family:-apple-system,sans-serif; padding:20px; margin:0; }
+  h1 { font-size:15px; font-weight:500; color:#888; }
+  .grid { display:flex; flex-wrap:wrap; gap:18px; align-items:flex-start; }
+  figure { margin:0; } figcaption { font-size:11px; color:#777; margin-top:5px; }
+  canvas { display:block; box-shadow:0 4px 20px rgba(0,0,0,.5); border-radius:3px; }
+  #status { font-size:13px; color:#6c6; margin-top:16px; }
+</style></head>
+<body>
+<h1>README samples — drawn from the DevVault sample notes</h1>
+<div class="grid" id="grid"></div>
+<div id="status">rendering…</div>
+<script src="harness.js"></script>
+<script>
+const { renderCard, palettesFromCover } = ShareQuote;
+
+// Each entry mirrors a real note in "Share Quote Samples".
+const SAMPLES = [
+  { file:'latin', cover:'fixtures/death-of-socrates.jpg', ratio:'1:1', style:'pretty', palette:0,
+    source:{ quote:'Carpe diem, quam minimum credula postero.', title:'Odes', author:'Horace' } },
+  { file:'literary', cover:'fixtures/ophelia.jpg', ratio:'16:9', style:'pretty', palette:0,
+    source:{ quote:'It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.', title:'Pride and Prejudice', author:'Jane Austen' } },
+  { file:'poetry', cover:'fixtures/wanderer.jpg', ratio:'9:16', style:'pretty', palette:0,
+    source:{ quote:'A thing of beauty is a joy for ever: its loveliness increases; it will never pass into nothingness.', title:'Endymion', author:'John Keats' } },
+  { file:'social', cover:'fixtures/great-wave.jpg', ratio:'4:5', style:'pretty', palette:0,
+    source:{ quote:'The best note-taking system is the one you actually open on a Tuesday.', title:'Field Notes', author:'@nathancashion' } },
+  { file:'classic', cover:'fixtures/ophelia.jpg', ratio:'4:5', style:'classic', palette:'light',
+    source:{ quote:'There is nothing either good or bad, but thinking makes it so.', title:'Hamlet', author:'William Shakespeare' } },
+  { file:'palettes', cover:'fixtures/great-wave.jpg', ratio:'4:5', style:'pretty', palette:2,
+    source:{ quote:'Collecting quotes is easy. **Returning** to them is the whole practice.', title:'Field Notes', author:'@nathancashion' } },
+];
+
+const load = src => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; });
+
+(async () => {
+  await document.fonts.ready;
+  const done = [];
+  for (const s of SAMPLES) {
+    const cover = await load(s.cover);
+    const palettes = palettesFromCover(cover);
+    const palette = s.palette === 'light'
+      ? palettes[palettes.length - 2]
+      : palettes[Math.min(s.palette, palettes.length - 1)];
+
+    const cv = document.createElement('canvas');
+    renderCard(cv, { source:s.source, ratio:s.ratio, style:s.style, palette, cover, scale:1 });
+
+    const scale = 260 / Math.max(cv.width, cv.height);
+    cv.style.width = (cv.width*scale)+'px'; cv.style.height = (cv.height*scale)+'px';
+    const fig = document.createElement('figure');
+    fig.appendChild(cv);
+    const cap = document.createElement('figcaption');
+    cap.textContent = s.file + ' — ' + s.ratio + ' ' + s.style;
+    fig.appendChild(cap);
+    document.getElementById('grid').appendChild(fig);
+
+    // Export at a size suitable for a README without bloating the repo.
+    const long = 1100 / Math.max(cv.width, cv.height);
+    const d = document.createElement('canvas');
+    d.width = Math.round(cv.width*long); d.height = Math.round(cv.height*long);
+    const dx = d.getContext('2d'); dx.imageSmoothingQuality='high';
+    dx.drawImage(cv, 0, 0, d.width, d.height);
+    await fetch('/save/sample-'+s.file, { method:'POST', body: d.toDataURL('image/png') });
+    done.push(s.file);
+  }
+  document.getElementById('status').textContent = 'saved: ' + done.join(', ');
+})();
+</script>
+</body></html>

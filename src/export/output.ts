@@ -117,10 +117,12 @@ async function ensureFolder(app: App, folderPath: string): Promise<void> {
 /** Pick a path that doesn't collide, appending -1, -2, ... as needed. */
 function uniquePath(app: App, folder: string, base: string, ext: string): string {
 	const dir = folder ? `${normalizePath(folder)}/` : "";
-	let candidate = `${dir}${base}.${ext}`;
+	// normalizePath on the whole constructed path, not just the folder: the base name
+	// comes from note content and can carry characters that need normalising too.
+	let candidate = normalizePath(`${dir}${base}.${ext}`);
 	let n = 1;
 	while (app.vault.getAbstractFileByPath(candidate)) {
-		candidate = `${dir}${base}-${n++}.${ext}`;
+		candidate = normalizePath(`${dir}${base}-${n++}.${ext}`);
 	}
 	return candidate;
 }
@@ -144,7 +146,7 @@ export async function copyImageToClipboard(blob: Blob): Promise<boolean> {
 		await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
 		return true;
 	} catch (err) {
-		console.error("[share-quote] clipboard write failed", err);
+		console.error("[quotable] clipboard write failed", err);
 		return false;
 	}
 }
@@ -158,7 +160,7 @@ export async function shareImageFiles(files: OutputFile[]): Promise<boolean> {
 		return true;
 	} catch (err) {
 		// AbortError means the user closed the sheet — not a failure worth reporting.
-		if (!isAbort(err)) console.error("[share-quote] share failed", err);
+		if (!isAbort(err)) console.error("[quotable] share failed", err);
 		return false;
 	}
 }
@@ -198,7 +200,7 @@ export async function saveFileToDevice(file: OutputFile): Promise<SaveOutcome> {
 			return "saved";
 		} catch (err) {
 			if (isAbort(err)) return "cancelled";
-			console.error("[share-quote] save dialog failed, falling back", err);
+			console.error("[quotable] save dialog failed, falling back", err);
 		}
 	}
 
@@ -227,7 +229,7 @@ export async function saveFilesToDevice(files: OutputFile[]): Promise<SaveOutcom
 			return "saved";
 		} catch (err) {
 			if (isAbort(err)) return "cancelled";
-			console.error("[share-quote] directory save failed, falling back", err);
+			console.error("[quotable] directory save failed, falling back", err);
 		}
 	}
 

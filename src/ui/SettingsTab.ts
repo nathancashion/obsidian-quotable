@@ -1,5 +1,5 @@
 import { PluginSettingTab, Setting } from "obsidian";
-import type ShareQuotePlugin from "../main";
+import type QuotablePlugin from "../main";
 import { STYLE_LABELS, type StyleKey } from "../render/styles";
 import { DEFAULT_SETTINGS, parseKeyList } from "../settings";
 import { RATIOS, type RatioKey } from "../types";
@@ -10,8 +10,8 @@ const EXPORT_SCALES: Record<string, string> = {
 	"3": "3× — print-sized",
 };
 
-export class ShareQuoteSettingTab extends PluginSettingTab {
-	constructor(private host: ShareQuotePlugin) {
+export class QuotableSettingTab extends PluginSettingTab {
+	constructor(private host: QuotablePlugin) {
 		super(host.app, host);
 	}
 
@@ -86,7 +86,7 @@ export class ShareQuoteSettingTab extends PluginSettingTab {
 			)
 			.addText((text) =>
 				text
-					.setPlaceholder("Share Quote")
+					.setPlaceholder("Quotable")
 					.setValue(settings.outputFolder)
 					.onChange((value) => {
 						settings.outputFolder = value.trim();
@@ -96,7 +96,7 @@ export class ShareQuoteSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl).setName("Frontmatter").setHeading();
 		containerEl.createEl("p", {
-			cls: "setting-item-description share-quote-settings-note",
+			cls: "setting-item-description quotable-settings-note",
 			text:
 				"Comma-separated, checked in order — the first key present in a note wins. " +
 				"A <cite> line inside the quote takes priority over all of these.",
@@ -168,7 +168,7 @@ export class ShareQuoteSettingTab extends PluginSettingTab {
 			.setName(name)
 			.setDesc(desc)
 			.addText((text) => {
-				text.inputEl.addClass("share-quote-key-input");
+				text.inputEl.addClass("quotable-key-input");
 				text.setValue(value.join(", ")).onChange((raw) => {
 					const keys = parseKeyList(raw);
 					// An empty field would silently disable detection for this field, so

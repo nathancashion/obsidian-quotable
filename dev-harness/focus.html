@@ -22,9 +22,9 @@
 </head>
 <body>
 <h1>Swatch focus indicator — tab through the row</h1>
-<div class="share-quote-modal">
-  <div class="share-quote-swatches" id="row"></div>
-  <div class="share-quote-row share-quote-actions">
+<div class="quotable-modal">
+  <div class="quotable-swatches" id="row"></div>
+  <div class="quotable-row quotable-actions">
     <button class="mod-cta">Save image…</button>
     <button>Save collection</button>
     <button>Copy image</button>
@@ -36,8 +36,8 @@
   const row = document.getElementById('row');
   COLORS.forEach((c,i) => {
     const b = document.createElement('button');
-    b.className = 'share-quote-swatch' + (i === 2 ? ' is-active' : '');
-    b.style.background = c;
+    b.className = 'quotable-swatch' + (i === 2 ? ' is-active' : '');
+    b.style.setProperty('--quotable-swatch', c);
     b.setAttribute('aria-label', 'palette ' + i);
     row.appendChild(b);
   });

@@ -1,15 +1,22 @@
-# Share Quote
+# Quotable
 
-Turn a passage from your notes into a shareable image — with your book's cover art
-composited in, colours pulled from that cover, and the aspect ratio you need.
+Turn a passage from your notes into a shareable image — with tasteful, customizable cover art, colors pulled from that cover, and your choice of aspect ratios.
 
-Inspired by Readwise's "pretty image" highlight export, but working from whatever
+Inspired by [Readwise's](https://go.cairn.health/readwise) "pretty image" highlight export, but now you can pull quotes from whatever
 is already in your vault.
+
+![A quote from Pride and Prejudice set on a green panel beside Millais' Ophelia](docs/samples/sample-literary.jpg)
+
+<p align="center">
+  <img src="docs/samples/sample-social.jpg" width="30%" alt="An original line over Hokusai's Great Wave, attributed to a social handle">
+  <img src="docs/samples/sample-latin.jpg" width="30%" alt="Carpe diem set beside David's Death of Socrates">
+  <img src="docs/samples/sample-classic.jpg" width="30%" alt="A line from Hamlet in the Classic style">
+</p>
 
 ## Using it
 
 Select some text, or put the cursor inside a blockquote or callout, then trigger
-**Share quote as image** from any of:
+**Create image** from any of:
 
 - the command palette
 - the editor right-click menu (shown only when there's something to capture)
@@ -44,7 +51,7 @@ detection got it wrong.
 | **Insert in note** | Saves into the vault and embeds it at the cursor. This is the only action that writes to your vault. |
 
 Options your platform can't support aren't shown — the plugin probes for them at
-load, and `Share Quote: Report export capabilities` will tell you what it found.
+load, and `Quotable: Report export capabilities` will tell you what it found.
 
 iOS has no way for a plugin to write to the photo library directly; the share sheet
 is the supported route, which is why **Save image** opens it there rather than
@@ -169,6 +176,30 @@ export path, including the native share sheet, work in Obsidian on iOS. Treat th
 settled rather than as an open question — if you are considering swapping the renderer
 for a DOM-rasterisation library, the failure mode it was chosen to avoid is real and
 would need re-testing on iOS, not just on desktop.
+
+## Built with Claude
+
+Quotable was vibe coded with [Claude Code](https://claude.com/claude-code). Effectively
+all of the implementation was written by Claude; the direction, design decisions, and
+testing against real vaults were mine.
+
+This is stated plainly because you should know what you're installing. The source is
+MIT and readable — it has no runtime dependencies, makes no network calls except to
+fetch a cover image you point it at, and writes to your vault only when you press
+**Insert in note**. Read it, and please open an issue if anything looks wrong.
+
+## Support
+
+If Quotable is useful to you:
+
+[![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/nathancashion)
+
+## Sample artwork
+
+The cover art in the images above is in the public domain, via Wikimedia Commons:
+*Ophelia* (John Everett Millais, 1852), *The Great Wave off Kanagawa* (Hokusai, 1831),
+*The Death of Socrates* (Jacques-Louis David, 1787) and *Wanderer above the Sea of Fog*
+(Caspar David Friedrich, 1818). The quoted authors are public domain too.
 
 ## Licence
 

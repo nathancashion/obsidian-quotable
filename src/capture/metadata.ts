@@ -1,5 +1,5 @@
 import type { App, TFile } from "obsidian";
-import type { ShareQuoteSettings } from "../settings";
+import type { QuotableSettings } from "../settings";
 import type { CoverRef, QuoteSource } from "../types";
 import type { CapturedText } from "./selection";
 
@@ -91,7 +91,7 @@ export function resolveMetadata(
 	app: App,
 	file: TFile,
 	captured: CapturedText,
-	settings: ShareQuoteSettings
+	settings: QuotableSettings
 ): QuoteSource {
 	const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter as
 		| Record<string, unknown>

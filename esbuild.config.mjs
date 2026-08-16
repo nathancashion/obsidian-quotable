@@ -1,3 +1,11 @@
+/*
+ * Build configuration.
+ *
+ * Adapted from obsidian-sample-plugin (https://github.com/obsidianmd/obsidian-sample-plugin),
+ * copyright the Obsidian team, MIT licensed. The banner text and the list of externals
+ * are taken from that template; the vault-output and asset-copying behaviour below is
+ * specific to this project.
+ */
 import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
@@ -19,7 +27,7 @@ const devVaultPlugin =
 	process.env.OBSIDIAN_PLUGIN_DIR ??
 	join(
 		homedir(),
-		"Library/Mobile Documents/iCloud~md~obsidian/Documents/DevVault/.obsidian/plugins/share-quote"
+		"Library/Mobile Documents/iCloud~md~obsidian/Documents/DevVault/.obsidian/plugins/quotable"
 	);
 
 const outDir = prod ? "." : devVaultPlugin;
@@ -37,7 +45,7 @@ const copyStaticAssets = {
 			for (const file of ["manifest.json", "styles.css"]) {
 				if (existsSync(file)) copyFileSync(file, join(outDir, file));
 			}
-			console.log(`[share-quote] built -> ${outDir}`);
+			console.log(`[quotable] built -> ${outDir}`);
 		});
 	},
 };
