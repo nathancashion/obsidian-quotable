@@ -1,7 +1,7 @@
 import { Modal, Platform, Setting, type App } from "obsidian";
 import { palettesFromCover } from "../color/palette";
 import { loadCover, type LoadedCover } from "../cover";
-import { renderCard, type CoverImage } from "../render/canvas";
+import { renderCard } from "../render/canvas";
 import { DARK_PALETTE, LIGHT_PALETTE, STYLE_LABELS, type Palette, type StyleKey } from "../render/styles";
 import type { QuotableSettings } from "../settings";
 import { RATIOS, type QuoteSource, type RatioKey } from "../types";
