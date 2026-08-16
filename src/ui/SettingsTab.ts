@@ -1,8 +1,25 @@
-import { PluginSettingTab, Setting } from "obsidian";
+import {
+	PluginSettingTab,
+	type SettingDefinition,
+	type SettingDefinitionItem,
+} from "obsidian";
 import type QuotablePlugin from "../main";
-import { STYLE_LABELS, type StyleKey } from "../render/styles";
-import { DEFAULT_SETTINGS, parseKeyList } from "../settings";
-import { RATIOS, type RatioKey } from "../types";
+import { STYLE_LABELS } from "../render/styles";
+import { DEFAULT_SETTINGS, parseKeyList, type QuotableSettings } from "../settings";
+import { RATIOS } from "../types";
+
+/**
+ * Settings, declared rather than drawn.
+ *
+ * `getSettingDefinitions` describes the settings and lets Obsidian render them,
+ * which is what puts them in the settings search index — a `display()` override
+ * builds DOM the search cannot see.
+ *
+ * Most keys map straight onto `QuotableSettings`, so the inherited accessors would
+ * do. Two shapes don't survive the trip and are converted below: the export scale is
+ * a number but a dropdown yields strings, and the frontmatter key lists are arrays
+ * presented as one comma-separated field.
+ */
 
 const EXPORT_SCALES: Record<string, string> = {
 	"1": "1× — 1200×1500 at 4:5",
@@ -10,171 +27,147 @@ const EXPORT_SCALES: Record<string, string> = {
 	"3": "3× — print-sized",
 };
 
+/** Settings stored as string arrays but edited as one comma-separated field. */
+const KEY_LISTS = ["titleKeys", "authorKeys", "coverKeys"] as const;
+type KeyListName = (typeof KEY_LISTS)[number];
+
+const isKeyList = (key: string): key is KeyListName =>
+	(KEY_LISTS as readonly string[]).includes(key);
+
 export class QuotableSettingTab extends PluginSettingTab {
 	constructor(private host: QuotablePlugin) {
 		super(host.app, host);
 	}
 
-	display(): void {
-		const { containerEl } = this;
-		const { settings } = this.host;
-		containerEl.empty();
-
-		const save = () => void this.host.saveSettings();
-
-		new Setting(containerEl).setName("Defaults").setHeading();
-
-		new Setting(containerEl)
-			.setName("Aspect ratio")
-			.setDesc("Which shape the share sheet opens on.")
-			.addDropdown((dropdown) => {
-				for (const key of Object.keys(RATIOS)) dropdown.addOption(key, key);
-				dropdown.setValue(settings.defaultRatio).onChange((value) => {
-					settings.defaultRatio = value as RatioKey;
-					save();
-				});
-			});
-
-		new Setting(containerEl)
-			.setName("Style")
-			.setDesc(
-				"Pretty composites the cover art. Clean and Classic are text only, and ignore the cover."
-			)
-			.addDropdown((dropdown) => {
-				for (const [key, label] of Object.entries(STYLE_LABELS)) {
-					dropdown.addOption(key, label);
-				}
-				dropdown.setValue(settings.defaultStyle).onChange((value) => {
-					settings.defaultStyle = value as StyleKey;
-					save();
-				});
-			});
-
-		new Setting(containerEl)
-			.setName("Use theme fonts")
-			.setDesc(
-				"Draw with the current Obsidian theme's fonts instead of the style's own. " +
-					"Images will look different if you change theme."
-			)
-			.addToggle((toggle) =>
-				toggle.setValue(settings.useThemeFonts).onChange((value) => {
-					settings.useThemeFonts = value;
-					save();
-				})
-			);
-
-		new Setting(containerEl).setName("Export").setHeading();
-
-		new Setting(containerEl)
-			.setName("Image scale")
-			.setDesc("Base sizes are already suitable for social media, so 1× is usually enough.")
-			.addDropdown((dropdown) => {
-				for (const [value, label] of Object.entries(EXPORT_SCALES)) {
-					dropdown.addOption(value, label);
-				}
-				dropdown.setValue(String(settings.exportScale)).onChange((value) => {
-					settings.exportScale = Number(value);
-					save();
-				});
-			});
-
-		new Setting(containerEl)
-			.setName("Vault folder for embeds")
-			.setDesc(
-				"Where 'Insert in note' stores its image. Saving to your device uses a " +
-					"system dialog instead, so this doesn't affect it. Empty means the vault root."
-			)
-			.addText((text) =>
-				text
-					.setPlaceholder("Quotable")
-					.setValue(settings.outputFolder)
-					.onChange((value) => {
-						settings.outputFolder = value.trim();
-						save();
-					})
-			);
-
-		new Setting(containerEl).setName("Frontmatter").setHeading();
-		containerEl.createEl("p", {
-			cls: "setting-item-description quotable-settings-note",
-			text:
-				"Comma-separated, checked in order — the first key present in a note wins. " +
-				"A <cite> line inside the quote takes priority over all of these.",
-		});
-
-		this.keyList(
-			containerEl,
-			"Title keys",
-			"Where the work's title comes from.",
-			settings.titleKeys,
-			(keys) => {
-				settings.titleKeys = keys;
-				save();
-			}
-		);
-
-		this.keyList(
-			containerEl,
-			"Author keys",
-			"Where the author's name comes from.",
-			settings.authorKeys,
-			(keys) => {
-				settings.authorKeys = keys;
-				save();
-			}
-		);
-
-		this.keyList(
-			containerEl,
-			"Cover keys",
-			"Where the cover image comes from. Accepts a vault path, a wikilink, or a URL.",
-			settings.coverKeys,
-			(keys) => {
-				settings.coverKeys = keys;
-				save();
-			}
-		);
-
-		new Setting(containerEl)
-			.setName("Restore defaults")
-			.setDesc("Reset every setting above to its original value.")
-			.addButton((button) =>
-				button
-					.setButtonText("Restore defaults")
-					.setWarning()
-					.onClick(async () => {
-						// A JSON round-trip rather than structuredClone: the settings are
-						// plain data, and structuredClone postdates the oldest WebView this
-						// plugin claims to support.
-						Object.assign(
-							this.host.settings,
-							JSON.parse(JSON.stringify(DEFAULT_SETTINGS))
-						);
-						await this.host.saveSettings();
-						this.display();
-					})
-			);
+	getSettingDefinitions(): SettingDefinitionItem[] {
+		return [
+			{
+				type: "group",
+				heading: "Defaults",
+				items: [
+					{
+						name: "Aspect ratio",
+						desc: "Which shape the share sheet opens on.",
+						control: {
+							type: "dropdown",
+							key: "defaultRatio",
+							options: Object.fromEntries(Object.keys(RATIOS).map((r) => [r, r])),
+						},
+					},
+					{
+						name: "Style",
+						desc: "Pretty composites the cover art. Clean and Classic are text only, and ignore the cover.",
+						control: { type: "dropdown", key: "defaultStyle", options: STYLE_LABELS },
+					},
+					{
+						name: "Use theme fonts",
+						desc: "Draw with the current Obsidian theme's fonts instead of the style's own. Images will look different if you change theme.",
+						control: { type: "toggle", key: "useThemeFonts" },
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: "Export",
+				items: [
+					{
+						name: "Image scale",
+						desc: "Base sizes are already suitable for social media, so 1× is usually enough.",
+						control: { type: "dropdown", key: "exportScale", options: EXPORT_SCALES },
+					},
+					{
+						name: "Vault folder for embeds",
+						desc: "Where 'Insert in note' stores its image. Saving to your device uses a system dialog, so this doesn't affect it. Empty means the vault root.",
+						control: {
+							type: "folder",
+							key: "outputFolder",
+							placeholder: "Quotable",
+							includeRoot: true,
+						},
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: "Frontmatter",
+				items: [
+					this.keyList(
+						"Title keys",
+						"titleKeys",
+						"Where the work's title comes from."
+					),
+					this.keyList(
+						"Author keys",
+						"authorKeys",
+						"Where the author's name comes from."
+					),
+					this.keyList(
+						"Cover keys",
+						"coverKeys",
+						"Where the cover image comes from. Accepts a vault path, a wikilink, or a URL."
+					),
+				],
+			},
+			{
+				name: "Restore defaults",
+				desc: "Reset every setting above to its original value.",
+				action: () => {
+					// Plain data, so a JSON round-trip is enough and avoids depending on
+					// structuredClone, which postdates the oldest WebView we support.
+					Object.assign(
+						this.host.settings,
+						JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as QuotableSettings
+					);
+					void this.host.saveSettings();
+					this.update();
+				},
+			},
+		];
 	}
 
-	/** A comma-separated list of frontmatter keys. */
-	private keyList(
-		containerEl: HTMLElement,
-		name: string,
-		desc: string,
-		value: string[],
-		onChange: (keys: string[]) => void
-	): void {
-		new Setting(containerEl)
-			.setName(name)
-			.setDesc(desc)
-			.addText((text) => {
-				text.inputEl.addClass("quotable-key-input");
-				text.setValue(value.join(", ")).onChange((raw) => {
-					const keys = parseKeyList(raw);
-					// An empty field would silently disable detection for this field, so
-					// keep the previous list rather than accepting nothing.
-					if (keys.length) onChange(keys);
-				});
-			});
+	/**
+	 * Comma-separated list of frontmatter keys, checked in order.
+	 *
+	 * Empty input is rejected rather than accepted: blanking the field would switch
+	 * off detection for that role with nothing on screen to explain why.
+	 */
+	private keyList(name: string, key: KeyListName, desc: string): SettingDefinition {
+		return {
+			name,
+			desc: `${desc} Comma-separated, checked in order — the first key present in a note wins. A <cite> line inside the quote takes priority over all of these.`,
+			control: {
+				type: "text",
+				key,
+				placeholder: DEFAULT_SETTINGS[key].join(", "),
+				validate: (value: string) =>
+					parseKeyList(value).length ? undefined : "Enter at least one key.",
+			},
+		};
+	}
+
+	getControlValue(key: string): unknown {
+		if (key === "exportScale") return String(this.host.settings.exportScale);
+		if (isKeyList(key)) return this.host.settings[key].join(", ");
+		return this.host.settings[key as keyof QuotableSettings];
+	}
+
+	async setControlValue(key: string, value: unknown): Promise<void> {
+		const settings = this.host.settings;
+
+		if (key === "exportScale") {
+			const scale = Number(value);
+			settings.exportScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
+		} else if (isKeyList(key)) {
+			settings[key] = parseKeyList(String(value));
+		} else if (key === "outputFolder") {
+			settings.outputFolder = String(value).trim();
+		} else if (key === "useThemeFonts") {
+			settings.useThemeFonts = Boolean(value);
+		} else if (key === "defaultRatio" || key === "defaultStyle") {
+			// Values come from our own dropdown options, so they are already valid.
+			settings[key] = value as never;
+		}
+
+		await this.host.saveSettings();
 	}
 }

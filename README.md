@@ -129,6 +129,10 @@ Notes without cover art still work — you get the neutral palettes.
 
 ## Settings
 
+Requires Obsidian **1.13.0** or later. Settings are declared through Obsidian's
+settings API, so they show up in the settings search rather than only inside the
+plugin's own tab.
+
 - **Defaults** — aspect ratio and style the sheet opens on; whether to draw with your
   current theme's fonts instead of the style's own.
 - **Export** — image scale, and the vault folder **Insert in note** writes to. Saving

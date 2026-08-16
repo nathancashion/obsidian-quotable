@@ -1,8 +1,8 @@
 {
 	"id": "quotable",
 	"name": "Quotable",
-	"version": "0.2.1",
-	"minAppVersion": "1.4.0",
+	"version": "0.3.0",
+	"minAppVersion": "1.13.0",
 	"description": "Turn selected text into a shareable image, with cover art, aspect ratios, and colors derived from the source.",
 	"author": "Nathan Cashion",
 	"authorUrl": "https://github.com/nathancashion",

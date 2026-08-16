@@ -91,17 +91,3 @@
 	border: none;
 	padding: var(--size-4-2) 0 0;
 }
-
-/* Settings tab */
-
-.quotable-settings-note {
-	margin: 0 0 var(--size-4-3);
-}
-
-/* Key lists are long enough that the default input width truncates them. */
-input.quotable-key-input {
-	width: 100%;
-	min-width: 18em;
-	font-family: var(--font-monospace);
-	font-size: var(--font-ui-smaller);
-}
