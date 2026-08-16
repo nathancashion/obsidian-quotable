@@ -1,4 +1,6 @@
 import { App, Notice, Platform, TFile, normalizePath } from "obsidian";
+import { desktopSave } from "./desktop";
+import { createZip } from "./zip";
 
 /**
  * Everything that turns a rendered canvas into something the user can actually use.
@@ -15,6 +17,8 @@ export interface ExportCapabilities {
 	filePicker: boolean;
 	/** Directory equivalent, used to write a whole collection in one prompt. */
 	directoryPicker: boolean;
+	/** Electron dialog + Node fs available — the path desktop actually uses. */
+	nativeSave: boolean;
 	platform: string;
 }
 
@@ -26,7 +30,12 @@ interface FileSystemWritable {
 interface FileHandleLike {
 	createWritable(): Promise<FileSystemWritable>;
 }
-interface DirectoryHandleLike {
+interface PermissionCapable {
+	queryPermission?(options: { mode: string }): Promise<string>;
+	requestPermission?(options: { mode: string }): Promise<string>;
+}
+interface DirectoryHandleLike extends PermissionCapable {
+	name?: string;
 	getFileHandle(name: string, options?: { create?: boolean }): Promise<FileHandleLike>;
 }
 type SaveFilePicker = (options?: {
@@ -46,8 +55,34 @@ export interface OutputFile {
 	name: string;
 }
 
-/** `cancelled` means the user dismissed a dialog — not an error worth reporting. */
-export type SaveOutcome = "saved" | "cancelled";
+/**
+ * Outcome of a save.
+ *
+ * `destination` exists so the notice can state where files actually went. Reporting
+ * a bare "saved" is what allowed a silent fallback to look like success.
+ */
+export interface SaveResult {
+	status: "saved" | "cancelled" | "failed";
+	destination?: string;
+	error?: string;
+}
+
+const DOWNLOADS = "your downloads folder";
+
+/**
+ * A directory handle can be returned without write access actually being granted,
+ * in which case createWritable throws. Ask explicitly rather than finding out
+ * halfway through writing a set of files.
+ */
+async function ensureWritePermission(handle: PermissionCapable): Promise<void> {
+	const options = { mode: "readwrite" };
+	if (!handle.queryPermission && !handle.requestPermission) return;
+	if ((await handle.queryPermission?.(options)) === "granted") return;
+	const granted = await handle.requestPermission?.(options);
+	if (granted && granted !== "granted") {
+		throw new Error("write permission was not granted for that folder");
+	}
+}
 
 const isAbort = (err: unknown) => (err as Error)?.name === "AbortError";
 
@@ -73,6 +108,7 @@ export function probeCapabilities(): ExportCapabilities {
 		shareFiles,
 		filePicker: typeof filePicker() === "function",
 		directoryPicker: typeof directoryPicker() === "function",
+		nativeSave: desktopSave() !== null,
 		platform: Platform.isIosApp
 			? "ios"
 			: Platform.isAndroidApp
@@ -182,59 +218,127 @@ function downloadBlob(file: OutputFile): void {
 /**
  * Write one image to the device.
  *
- * Prefers a real save dialog. Where the File System Access API is unavailable the
- * file is downloaded instead, which succeeds but gives the user no say in where it
- * lands — hence the capability probe, so the UI can describe the button honestly.
+ * If a save dialog is available it is authoritative: once the user has chosen a
+ * destination, a failure is reported rather than quietly redirected somewhere else.
+ * The plain download is only for platforms with no dialog at all.
  */
-export async function saveFileToDevice(file: OutputFile): Promise<SaveOutcome> {
-	const picker = filePicker();
-	if (picker) {
+export async function saveFileToDevice(file: OutputFile): Promise<SaveResult> {
+	const desktop = desktopSave();
+	if (desktop) {
 		try {
-			const handle = await picker({
-				suggestedName: file.name,
-				types: [{ description: "PNG image", accept: { "image/png": [".png"] } }],
-			});
-			const writable = await handle.createWritable();
-			await writable.write(file.blob);
-			await writable.close();
-			return "saved";
+			const saved = await desktop.saveOne(
+				file.name,
+				new Uint8Array(await file.blob.arrayBuffer())
+			);
+			return saved ? { status: "saved", destination: saved } : { status: "cancelled" };
 		} catch (err) {
-			if (isAbort(err)) return "cancelled";
-			console.error("[quotable] save dialog failed, falling back", err);
+			console.error("[quotable] native save failed", err);
+			return { status: "failed", error: (err as Error).message };
 		}
 	}
 
-	downloadBlob(file);
-	return "saved";
+	const picker = filePicker();
+	if (!picker) {
+		downloadBlob(file);
+		return { status: "saved", destination: DOWNLOADS };
+	}
+
+	let handle: FileHandleLike;
+	try {
+		handle = await picker({
+			suggestedName: file.name,
+			types: [{ description: "PNG image", accept: { "image/png": [".png"] } }],
+		});
+	} catch (err) {
+		if (isAbort(err)) return { status: "cancelled" };
+		console.error("[quotable] save dialog failed", err);
+		return { status: "failed", error: (err as Error).message };
+	}
+
+	try {
+		const writable = await handle.createWritable();
+		await writable.write(file.blob);
+		await writable.close();
+		return { status: "saved", destination: file.name };
+	} catch (err) {
+		console.error("[quotable] writing the chosen file failed", err);
+		return { status: "failed", error: (err as Error).message };
+	}
 }
 
 /**
  * Write several images to the device in one gesture.
  *
- * A directory picker asks once and writes them all. Without it each file downloads
- * separately, which Chromium may throttle or prompt about — acceptable as a fallback,
- * but the reason the picker is preferred.
+ * With a directory picker the files are written individually into the folder the
+ * user chose. Without one they are bundled into a single archive rather than fired
+ * off as separate downloads, because a burst of programmatic downloads is blocked
+ * by Chromium after the first — silently, from the user's point of view.
+ *
+ * Crucially, once a folder has been chosen the operation either completes there or
+ * reports why not. Falling back to downloads at that point produces the exact
+ * failure this replaced: a success message, and no files where the user was looking.
  */
-export async function saveFilesToDevice(files: OutputFile[]): Promise<SaveOutcome> {
-	const picker = directoryPicker();
-	if (picker) {
+export async function saveFilesToDevice(
+	files: OutputFile[],
+	archiveName: string
+): Promise<SaveResult> {
+	const desktop = desktopSave();
+	if (desktop) {
 		try {
-			const directory = await picker({ mode: "readwrite" });
+			const entries = await Promise.all(
+				files.map(async (file) => ({
+					name: file.name,
+					data: new Uint8Array(await file.blob.arrayBuffer()),
+				}))
+			);
+			const folder = await desktop.saveMany(entries);
+			return folder ? { status: "saved", destination: folder } : { status: "cancelled" };
+		} catch (err) {
+			console.error("[quotable] native folder save failed", err);
+			return { status: "failed", error: (err as Error).message };
+		}
+	}
+
+	const picker = directoryPicker();
+
+	if (picker) {
+		let directory: DirectoryHandleLike;
+		try {
+			directory = await picker({ mode: "readwrite" });
+		} catch (err) {
+			if (isAbort(err)) return { status: "cancelled" };
+			console.error("[quotable] folder dialog failed", err);
+			return { status: "failed", error: (err as Error).message };
+		}
+
+		try {
+			await ensureWritePermission(directory);
 			for (const file of files) {
 				const handle = await directory.getFileHandle(file.name, { create: true });
 				const writable = await handle.createWritable();
 				await writable.write(file.blob);
 				await writable.close();
 			}
-			return "saved";
+			return { status: "saved", destination: directory.name ?? "the chosen folder" };
 		} catch (err) {
-			if (isAbort(err)) return "cancelled";
-			console.error("[quotable] directory save failed, falling back", err);
+			console.error("[quotable] writing to the chosen folder failed", err);
+			return { status: "failed", error: (err as Error).message };
 		}
 	}
 
-	for (const file of files) downloadBlob(file);
-	return "saved";
+	try {
+		const entries = await Promise.all(
+			files.map(async (file) => ({
+				name: file.name,
+				data: new Uint8Array(await file.blob.arrayBuffer()),
+			}))
+		);
+		downloadBlob({ blob: createZip(entries), name: `${archiveName}.zip` });
+		return { status: "saved", destination: DOWNLOADS };
+	} catch (err) {
+		console.error("[quotable] building the archive failed", err);
+		return { status: "failed", error: (err as Error).message };
+	}
 }
 
 export function notify(message: string): void {

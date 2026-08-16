@@ -15,6 +15,7 @@ import {
 	shareImageFiles,
 	type ExportCapabilities,
 	type OutputFile,
+	type SaveResult,
 } from "../export/output";
 
 /**
@@ -182,7 +183,7 @@ export class ShareModal extends Modal {
 				await shareImageFiles([file]);
 				return;
 			}
-			if ((await saveFileToDevice(file)) === "saved") notify(`Saved ${file.name}`);
+			this.report(await saveFileToDevice(file), `Saved ${file.name}`);
 		});
 
 		const collection = row.createEl("button", { text: "Save collection" });
@@ -199,9 +200,10 @@ export class ShareModal extends Modal {
 				await shareImageFiles(files);
 				return;
 			}
-			if ((await saveFilesToDevice(files)) === "saved") {
-				notify(`Saved ${files.length} images`);
-			}
+			this.report(
+				await saveFilesToDevice(files, this.baseName()),
+				`Saved ${files.length} images`
+			);
 		});
 
 		if (capabilities.shareFiles && !this.savesViaShareSheet) {
@@ -238,6 +240,20 @@ export class ShareModal extends Modal {
 				this.close();
 			});
 		}
+	}
+
+	/**
+	 * Turn a save result into a notice. The destination is always named: a message
+	 * that just says "saved" cannot distinguish success from a file written
+	 * somewhere the user was not looking.
+	 */
+	private report(result: SaveResult, success: string) {
+		if (result.status === "cancelled") return;
+		if (result.status === "failed") {
+			notify(`Could not save: ${result.error ?? "unknown error"}`);
+			return;
+		}
+		notify(result.destination ? `${success} to ${result.destination}` : success);
 	}
 
 	/** Render one ratio at export scale, ready to write out. */

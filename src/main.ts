@@ -57,7 +57,8 @@ export default class QuotablePlugin extends Plugin {
 				notify(
 					`platform: ${c.platform}\ntoBlob: ${c.canvasToBlob}\n` +
 						`clipboard image: ${c.clipboardImage}\nshare files: ${c.shareFiles}\n` +
-						`save dialog: ${c.filePicker}\nfolder dialog: ${c.directoryPicker}`
+						`save dialog: ${c.filePicker}\nfolder dialog: ${c.directoryPicker}\n` +
+						`native desktop save: ${c.nativeSave}`
 				);
 			},
 		});
