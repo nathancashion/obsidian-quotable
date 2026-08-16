@@ -26,6 +26,8 @@ The share sheet gives you four aspect ratios, three styles, and a row of colours
 sampled from the cover art. Attribution is editable in place if the automatic
 detection got it wrong.
 
+![The Quotable share sheet open over a note, showing the live preview, ratio and style pickers, cover-derived colour swatches, and the export buttons](docs/samples/modal.jpg)
+
 ### Aspect ratios
 
 | Ratio | Size | Suits |
