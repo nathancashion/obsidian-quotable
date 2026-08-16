@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-quotable",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"description": "Turn selected text into a shareable image.",
 	"main": "main.js",
 	"private": true,
