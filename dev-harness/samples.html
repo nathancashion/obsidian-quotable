@@ -25,11 +25,11 @@ const SAMPLES = [
   { file:'poetry', cover:'fixtures/wanderer.jpg', ratio:'9:16', style:'pretty', palette:0,
     source:{ quote:'A thing of beauty is a joy for ever: its loveliness increases; it will never pass into nothingness.', title:'Endymion', author:'John Keats' } },
   { file:'social', cover:'fixtures/great-wave.jpg', ratio:'4:5', style:'pretty', palette:0,
-    source:{ quote:'The best note-taking system is the one you actually open on a Tuesday.', title:'Field Notes', author:'@nathancashion' } },
+    source:{ quote:'The best note-taking system is the one you actually open on a Tuesday.', title:'Field Notes', author:'@yourhandle' } },
   { file:'classic', cover:'fixtures/ophelia.jpg', ratio:'4:5', style:'classic', palette:'light',
     source:{ quote:'There is nothing either good or bad, but thinking makes it so.', title:'Hamlet', author:'William Shakespeare' } },
   { file:'palettes', cover:'fixtures/great-wave.jpg', ratio:'4:5', style:'pretty', palette:2,
-    source:{ quote:'Collecting quotes is easy. **Returning** to them is the whole practice.', title:'Field Notes', author:'@nathancashion' } },
+    source:{ quote:'Collecting quotes is easy. **Returning** to them is the whole practice.', title:'Field Notes', author:'@yourhandle' } },
 ];
 
 const load = src => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; });
