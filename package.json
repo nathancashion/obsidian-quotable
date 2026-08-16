@@ -8,7 +8,9 @@
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"typecheck": "tsc -noEmit -skipLibCheck",
-		"test:capture": "esbuild tools/capture-tests.ts --bundle --platform=node --format=esm --outfile=dev-harness/capture-tests.mjs --log-level=error && node dev-harness/capture-tests.mjs"
+		"test:capture": "esbuild tools/capture-tests.ts --bundle --platform=node --format=esm --outfile=dev-harness/capture-tests.mjs --log-level=error && node dev-harness/capture-tests.mjs",
+		"test:zip": "esbuild tools/zip-tests.ts --bundle --platform=node --format=esm --outfile=dev-harness/zip-tests.mjs --log-level=error && node dev-harness/zip-tests.mjs",
+		"test": "npm run test:capture && npm run test:zip"
 	},
 	"keywords": [
 		"obsidian",
