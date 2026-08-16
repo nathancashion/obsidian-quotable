@@ -179,6 +179,38 @@ settled rather than as an open question — if you are considering swapping the 
 for a DOM-rasterisation library, the failure mode it was chosen to avoid is real and
 would need re-testing on iOS, not just on desktop.
 
+## Privacy and permissions
+
+Quotable collects nothing about you. There is no telemetry, no analytics, no account,
+and no paid tier. It has no runtime dependencies, and no code is fetched or updated at
+runtime — what you install is what runs.
+
+**Network.** Quotable contacts no service of its own. The one time it touches the
+network is cover art: if a note's `cover_image` is a URL, that URL — and only that URL
+— is fetched so the picture can be drawn into the card. The host is whichever one you
+pointed at. Requests go through Obsidian's own `requestUrl`, which is what makes cover
+images work regardless of the origin's CORS policy. Notes whose cover is a vault file,
+or which have no cover, cause no network activity at all.
+
+**Files outside your vault.** **Save image** and **Save collection** write to a place
+you choose in a native dialog, which is the point of them — the images are for posting
+elsewhere, not for filing in your vault. Nothing is written until you have picked a
+destination, and nothing outside the vault is ever read.
+
+On desktop this goes through Electron's dialog and Node's `fs`
+(`require("electron")`, `require("fs")` in [`src/export/desktop.ts`](src/export/desktop.ts)).
+That is deliberate rather than convenient: Obsidian's Electron denies File System Access
+API writes, so `showSaveFilePicker` opens a dialog and then silently fails to write
+anything. On mobile the same actions go through the system share sheet instead, and
+none of this code is reached.
+
+**Your vault.** Only **Insert in note** writes to it, saving the image to the folder
+set in settings and embedding it at your cursor. Everything else leaves your vault
+untouched.
+
+**Clipboard.** **Copy image** puts a PNG on the clipboard when you press it, and at no
+other time.
+
 ## Built with Claude
 
 Quotable was vibe coded with [Claude Code](https://claude.com/claude-code). Effectively
@@ -186,9 +218,8 @@ all of the implementation was written by Claude; the direction, design decisions
 testing against real vaults were mine.
 
 This is stated plainly because you should know what you're installing. The source is
-MIT and readable — it has no runtime dependencies, makes no network calls except to
-fetch a cover image you point it at, and writes to your vault only when you press
-**Insert in note**. Read it, and please open an issue if anything looks wrong.
+MIT and readable, and what it does with your data and your disk is set out below.
+Read it, and please open an issue if anything looks wrong.
 
 ## Support
 
@@ -205,4 +236,9 @@ The cover art in the images above is in the public domain, via Wikimedia Commons
 
 ## Licence
 
-MIT
+MIT — see [LICENSE](LICENSE).
+
+The build configuration ([`esbuild.config.mjs`](esbuild.config.mjs)) is adapted from
+[obsidian-sample-plugin](https://github.com/obsidianmd/obsidian-sample-plugin),
+copyright the Obsidian team, also MIT. Everything else is original to this project;
+there are no bundled or vendored third-party libraries.
