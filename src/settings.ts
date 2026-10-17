@@ -1,5 +1,9 @@
-import type { StyleKey } from "./render/styles";
-import type { RatioKey } from "./types";
+import { STYLE_LABELS, type StyleKey } from "./render/styles";
+import { RATIOS, type RatioKey } from "./types";
+
+/** Scales offered in settings. Anything else in a saved file is reset. */
+export const EXPORT_SCALES = [1, 2, 3] as const;
+export type ExportScale = (typeof EXPORT_SCALES)[number];
 
 export interface QuotableSettings {
 	/**
@@ -14,7 +18,7 @@ export interface QuotableSettings {
 	defaultRatio: RatioKey;
 	defaultStyle: StyleKey;
 	/** Multiplier applied to the base ratio dimensions on export. */
-	exportScale: number;
+	exportScale: ExportScale;
 	/** Vault folder for saved images. Empty means the vault root. */
 	outputFolder: string;
 	/** Draw with the current Obsidian theme's fonts instead of the style's own. */
@@ -36,6 +40,44 @@ export const DEFAULT_SETTINGS: QuotableSettings = {
 	outputFolder: "Quotable",
 	useThemeFonts: false,
 };
+
+/**
+ * Build settings from whatever `loadData()` returned.
+ *
+ * The settings tab's `validate` only gates what the user types; it never sees a
+ * saved file. So each field is checked here, and anything missing, mistyped, or no
+ * longer offered (a hand-edited file, a value from an older version) falls back to
+ * its default rather than reaching the renderer. Arrays are always fresh copies, so
+ * editing the settings can never mutate DEFAULT_SETTINGS.
+ */
+export function normalizeSettings(stored: unknown): QuotableSettings {
+	const s = (stored && typeof stored === "object" ? stored : {}) as Record<string, unknown>;
+	const d = DEFAULT_SETTINGS;
+
+	const keyList = (value: unknown, fallback: string[]): string[] => {
+		const keys = Array.isArray(value)
+			? value.filter((k): k is string => typeof k === "string").map((k) => k.trim()).filter(Boolean)
+			: [];
+		return keys.length ? keys : [...fallback];
+	};
+	const oneOf = <T extends string>(value: unknown, options: Record<T, unknown>, fallback: T): T =>
+		typeof value === "string" && Object.prototype.hasOwnProperty.call(options, value)
+			? (value as T)
+			: fallback;
+
+	return {
+		titleKeys: keyList(s.titleKeys, d.titleKeys),
+		authorKeys: keyList(s.authorKeys, d.authorKeys),
+		coverKeys: keyList(s.coverKeys, d.coverKeys),
+		defaultRatio: oneOf(s.defaultRatio, RATIOS, d.defaultRatio),
+		defaultStyle: oneOf(s.defaultStyle, STYLE_LABELS, d.defaultStyle),
+		exportScale: (EXPORT_SCALES as readonly unknown[]).includes(s.exportScale)
+			? (s.exportScale as ExportScale)
+			: d.exportScale,
+		outputFolder: typeof s.outputFolder === "string" ? s.outputFolder.trim() : d.outputFolder,
+		useThemeFonts: typeof s.useThemeFonts === "boolean" ? s.useThemeFonts : d.useThemeFonts,
+	};
+}
 
 /** Parse a comma-separated settings field into a clean key list. */
 export function parseKeyList(value: string): string[] {

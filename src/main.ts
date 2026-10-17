@@ -2,7 +2,12 @@ import { MarkdownView, Plugin, type Editor, type TFile } from "obsidian";
 import { resolveMetadata } from "./capture/metadata";
 import { captureFromEditor } from "./capture/selection";
 import { notify, probeCapabilities, type ExportCapabilities } from "./export/output";
-import { DEFAULT_SETTINGS, resolveThemeFonts, type QuotableSettings } from "./settings";
+import {
+	DEFAULT_SETTINGS,
+	normalizeSettings,
+	resolveThemeFonts,
+	type QuotableSettings,
+} from "./settings";
 import { ShareModal } from "./ui/ShareModal";
 import { QuotableSettingTab } from "./ui/SettingsTab";
 
@@ -94,11 +99,9 @@ export default class QuotablePlugin extends Plugin {
 
 	async loadSettings() {
 		// loadData() is typed `any`. Narrowing through `unknown` keeps the assignment
-		// type-safe and also guards against a settings file that isn't an object.
+		// type-safe; normalizeSettings then checks every field.
 		const stored: unknown = await this.loadData();
-		const overrides =
-			stored && typeof stored === "object" ? (stored as Partial<QuotableSettings>) : {};
-		this.settings = { ...DEFAULT_SETTINGS, ...overrides };
+		this.settings = normalizeSettings(stored);
 	}
 
 	async saveSettings() {

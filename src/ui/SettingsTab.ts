@@ -5,7 +5,14 @@ import {
 } from "obsidian";
 import type QuotablePlugin from "../main";
 import { STYLE_LABELS } from "../render/styles";
-import { DEFAULT_SETTINGS, parseKeyList, type QuotableSettings } from "../settings";
+import {
+	DEFAULT_SETTINGS,
+	EXPORT_SCALES,
+	normalizeSettings,
+	parseKeyList,
+	type ExportScale,
+	type QuotableSettings,
+} from "../settings";
 import { RATIOS } from "../types";
 
 /**
@@ -21,7 +28,7 @@ import { RATIOS } from "../types";
  * presented as one comma-separated field.
  */
 
-const EXPORT_SCALES: Record<string, string> = {
+const SCALE_LABELS: Record<`${ExportScale}`, string> = {
 	"1": "1× — 1200×1500 at 4:5",
 	"2": "2× — larger files, sharper on high-density displays",
 	"3": "3× — print-sized",
@@ -48,6 +55,7 @@ export class QuotableSettingTab extends PluginSettingTab {
 					{
 						name: "Aspect ratio",
 						desc: "Which shape the share sheet opens on.",
+						aliases: ["shape", "dimensions", "square", "portrait", "landscape"],
 						control: {
 							type: "dropdown",
 							key: "defaultRatio",
@@ -57,11 +65,13 @@ export class QuotableSettingTab extends PluginSettingTab {
 					{
 						name: "Style",
 						desc: "Pretty composites the cover art. Clean and Classic are text only, and ignore the cover.",
+						aliases: ["layout", "template", "look"],
 						control: { type: "dropdown", key: "defaultStyle", options: STYLE_LABELS },
 					},
 					{
 						name: "Use theme fonts",
 						desc: "Draw with the current Obsidian theme's fonts instead of the style's own. Images will look different if you change theme.",
+						aliases: ["font", "typeface", "typography"],
 						control: { type: "toggle", key: "useThemeFonts" },
 					},
 				],
@@ -73,10 +83,12 @@ export class QuotableSettingTab extends PluginSettingTab {
 					{
 						name: "Image scale",
 						desc: "Base sizes are already suitable for social media, so 1× is usually enough.",
-						control: { type: "dropdown", key: "exportScale", options: EXPORT_SCALES },
+						aliases: ["resolution", "size", "quality", "dpi"],
+						control: { type: "dropdown", key: "exportScale", options: SCALE_LABELS },
 					},
 					{
 						name: "Vault folder for embeds",
+						aliases: ["output", "save location", "attachments", "directory"],
 						desc: "Where 'Insert in note' stores its image. Saving to your device uses a system dialog, so this doesn't affect it. Empty means the vault root.",
 						control: {
 							type: "folder",
@@ -112,12 +124,8 @@ export class QuotableSettingTab extends PluginSettingTab {
 				name: "Restore defaults",
 				desc: "Reset every setting above to its original value.",
 				action: () => {
-					// Plain data, so a JSON round-trip is enough and avoids depending on
-					// structuredClone, which postdates the oldest WebView we support.
-					Object.assign(
-						this.host.settings,
-						JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as QuotableSettings
-					);
+					// Normalizing nothing yields the defaults, with fresh arrays.
+					Object.assign(this.host.settings, normalizeSettings({}));
 					void this.host.saveSettings();
 					this.update();
 				},
@@ -135,6 +143,7 @@ export class QuotableSettingTab extends PluginSettingTab {
 		return {
 			name,
 			desc: `${desc} Comma-separated, checked in order — the first key present in a note wins. A <cite> line inside the quote takes priority over all of these.`,
+			aliases: ["frontmatter", "properties", "metadata", "yaml"],
 			control: {
 				type: "text",
 				key,
@@ -156,7 +165,9 @@ export class QuotableSettingTab extends PluginSettingTab {
 
 		if (key === "exportScale") {
 			const scale = Number(value);
-			settings.exportScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
+			settings.exportScale = (EXPORT_SCALES as readonly number[]).includes(scale)
+				? (scale as ExportScale)
+				: DEFAULT_SETTINGS.exportScale;
 		} else if (isKeyList(key)) {
 			settings[key] = parseKeyList(String(value));
 		} else if (key === "outputFolder") {

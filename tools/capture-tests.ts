@@ -9,6 +9,7 @@ import { captureFromEditor } from "../src/capture/selection";
 import { parseCite } from "../src/capture/metadata";
 import { parseEmphasis } from "../src/render/text";
 import { attributionSize } from "../src/render/canvas";
+import { DEFAULT_SETTINGS, normalizeSettings } from "../src/settings";
 
 /** Minimal stand-in for Obsidian's Editor covering only what capture uses. */
 function fakeEditor(content: string, cursorLine = 0, selection = "") {
@@ -228,6 +229,59 @@ check(
 
 // A large quote should let the attribution grow proportionally, not sit at the floor.
 check("large quote scales the attribution up", attributionSize(72, 12) > 4.2 * 12, true);
+
+// --- loading saved settings ---
+// validate() only gates typed input, so a saved file is checked on load instead.
+check("no saved file yields the defaults", normalizeSettings(undefined), DEFAULT_SETTINGS);
+check("a non-object file yields the defaults", normalizeSettings("garbage"), DEFAULT_SETTINGS);
+
+check(
+	"valid saved values are kept",
+	normalizeSettings({
+		titleKeys: ["name"],
+		defaultRatio: "1:1",
+		defaultStyle: "classic",
+		exportScale: 2,
+		outputFolder: "Images",
+		useThemeFonts: true,
+	}),
+	{
+		...DEFAULT_SETTINGS,
+		titleKeys: ["name"],
+		defaultRatio: "1:1",
+		defaultStyle: "classic",
+		exportScale: 2,
+		outputFolder: "Images",
+		useThemeFonts: true,
+	}
+);
+
+check(
+	"invalid saved values fall back to their defaults",
+	normalizeSettings({
+		titleKeys: [],
+		authorKeys: "author",
+		coverKeys: [" ", 7],
+		defaultRatio: "3:2",
+		defaultStyle: "toString",
+		exportScale: 0,
+		outputFolder: null,
+		useThemeFonts: "yes",
+	}),
+	DEFAULT_SETTINGS
+);
+
+check(
+	"saved key lists are trimmed and cleaned",
+	normalizeSettings({ authorKeys: [" by ", "", "writer"] }).authorKeys,
+	["by", "writer"]
+);
+
+check(
+	"loaded key lists never share an array with the defaults",
+	normalizeSettings({}).titleKeys !== DEFAULT_SETTINGS.titleKeys,
+	true
+);
 
 // --- report ---
 if (failures.length) {
